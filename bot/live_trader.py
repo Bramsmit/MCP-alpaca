@@ -38,8 +38,8 @@ from bot.telegram import send_telegram, notify_trade
 
 def get_trading_clients():
     """Maak Alpaca clients (paper trading)."""
-    api_key = os.environ.get("ALPACA_API_KEY", "")
-    secret = os.environ.get("ALPACA_SECRET_KEY", "")
+    api_key = os.environ.get("ALPACA_API_KEY", "").strip()
+    secret = os.environ.get("ALPACA_SECRET_KEY", "").strip()
     if not api_key or not secret:
         raise ValueError("ALPACA_API_KEY en ALPACA_SECRET_KEY vereist in .env")
     return (
