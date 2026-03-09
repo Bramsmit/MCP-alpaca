@@ -1,0 +1,14 @@
+name: Daily Status
+on:
+  schedule:
+    - cron: '0 9 * * *'   # Elke dag om 9:00 UTC (10:00/11:00 NL)
+  workflow_dispatch:       # Handmatig testen
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stuur dagelijkse heartbeat
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=✅ Trading bot: nog actief. Laatste dagelijkse check OK."

@@ -14,12 +14,20 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install alpaca-py pandas requests
+        run: pip install -r bot/requirements.txt
 
       - name: Run trading bot
+        id: trade
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m bot.live_trader
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=❌ Trading bot heeft gefaald. Check GitHub Actions voor details."
