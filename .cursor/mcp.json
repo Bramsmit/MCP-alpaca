@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "alpaca": {
+      "command": "/Users/bramsmits/.local/bin/uvx",
+      "args": ["alpaca-mcp-server", "serve"],
+      "env": {
+        "ALPACA_API_KEY": "PKLEWPWVXEYAGJWCH64JPNSUK5",
+        "ALPACA_SECRET_KEY": "Eg1wPxZqzfVREU9f76GGhVBtW5F7ax28YrRcRMfnzMHE"
+      }
+    }
+  }
+}
