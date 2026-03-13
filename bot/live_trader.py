@@ -6,7 +6,7 @@ Draait 1x per dag of via cron. Plaatst limit buy/sell en stop-loss orders.
 
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Laad .env
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -33,6 +33,7 @@ from bot.config import (
     MIN_SPREAD_PCT,
     STOP_LOSS_PER_UNIT,
     ORDER_UPDATE_THRESHOLD,
+    ORDER_MAX_AGE_HOURS,
 )
 from bot.telegram import send_telegram, notify_trade
 
@@ -119,6 +120,20 @@ def get_open_orders(trading_client, symbol: str = None) -> list:
     return list(orders)
 
 
+def _order_age_hours(order) -> float:
+    """Leeftijd van order in uren. Gebruik submitted_at of created_at."""
+    ts = getattr(order, "submitted_at", None) or getattr(order, "created_at", None)
+    if not ts:
+        return 0.0
+    if isinstance(ts, str):
+        ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if hasattr(ts, "tzinfo") and ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    delta = now - ts
+    return delta.total_seconds() / 3600
+
+
 def get_buying_power(trading_client) -> float:
     """Beschikbaar cash."""
     acc = trading_client.get_account()
@@ -172,11 +187,22 @@ def run_once():
 
             if existing_sell:
                 old_sell_price = float(existing_sell.limit_price)
+                age_hours = _order_age_hours(existing_sell)
                 price_diff = abs(old_sell_price - limit_sell) / old_sell_price
-                if price_diff > ORDER_UPDATE_THRESHOLD:
+
+                if age_hours >= ORDER_MAX_AGE_HOURS:
                     try:
                         trading_client.cancel_order_by_id(existing_sell.id)
-                        # Cancel existing stop-limit too, so we can re-place both fresh
+                        if existing_stop:
+                            trading_client.cancel_order_by_id(existing_stop.id)
+                        print(f"  {symbol}: Sell order vervangen na {age_hours:.0f}h (verse 24h window)")
+                        send_telegram(f"🔄 {symbol}: Sell order vervangen na {age_hours:.0f}h, nieuwe levels @ ${limit_sell:.4f}")
+                    except Exception as e:
+                        print(f"  {symbol}: Fout bij annuleren sell order: {e}")
+                        needs_new_sell = False
+                elif price_diff > ORDER_UPDATE_THRESHOLD:
+                    try:
+                        trading_client.cancel_order_by_id(existing_sell.id)
                         if existing_stop:
                             trading_client.cancel_order_by_id(existing_stop.id)
                         print(f"  {symbol}: Sell order bijgewerkt ({old_sell_price:.4f} -> {limit_sell:.4f}, {price_diff*100:.1f}% verschil)")
@@ -185,7 +211,7 @@ def run_once():
                         print(f"  {symbol}: Fout bij annuleren sell order: {e}")
                         needs_new_sell = False
                 else:
-                    print(f"  {symbol}: Sell order ongewijzigd @ ${old_sell_price:.4f} ({price_diff*100:.1f}% verschil, onder drempel)")
+                    print(f"  {symbol}: Sell order ongewijzigd @ ${old_sell_price:.4f} ({price_diff*100:.1f}% verschil, {age_hours:.0f}h oud)")
                     needs_new_sell = False
 
             if needs_new_sell:
@@ -231,8 +257,18 @@ def run_once():
 
                 if existing_buy:
                     old_price = float(existing_buy.limit_price)
+                    age_hours = _order_age_hours(existing_buy)
                     price_diff = abs(old_price - buy_level) / old_price
-                    if price_diff > ORDER_UPDATE_THRESHOLD:
+
+                    if age_hours >= ORDER_MAX_AGE_HOURS:
+                        try:
+                            trading_client.cancel_order_by_id(existing_buy.id)
+                            print(f"  {symbol}: Buy order vervangen na {age_hours:.0f}h (verse 24h window)")
+                            send_telegram(f"🔄 {symbol}: Buy order vervangen na {age_hours:.0f}h, nieuwe levels @ ${buy_level:.4f}")
+                        except Exception as e:
+                            print(f"  {symbol}: Fout bij annuleren buy order: {e}")
+                            needs_new_order = False
+                    elif price_diff > ORDER_UPDATE_THRESHOLD:
                         try:
                             trading_client.cancel_order_by_id(existing_buy.id)
                             print(f"  {symbol}: Buy order bijgewerkt ({old_price:.4f} -> {buy_level:.4f}, {price_diff*100:.1f}% verschil)")
@@ -241,7 +277,7 @@ def run_once():
                             print(f"  {symbol}: Fout bij annuleren buy order: {e}")
                             needs_new_order = False
                     else:
-                        print(f"  {symbol}: Buy order ongewijzigd @ ${old_price:.4f} ({price_diff*100:.1f}% verschil, onder drempel)")
+                        print(f"  {symbol}: Buy order ongewijzigd @ ${old_price:.4f} ({price_diff*100:.1f}% verschil, {age_hours:.0f}h oud)")
                         needs_new_order = False
 
                 if needs_new_order:

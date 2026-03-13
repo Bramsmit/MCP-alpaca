@@ -20,6 +20,9 @@ STOP_LOSS_PER_UNIT = 0.01
 
 # Dynamische order updates: herplaats order als prijs meer dan dit percentage afwijkt
 ORDER_UPDATE_THRESHOLD = 0.01  # 1%
+
+# Na 30 uur: order waarschijnlijk niet meer relevant (prijs bewogen), cancel en herplaats met verse 24h levels
+ORDER_MAX_AGE_HOURS = 30
 STOP_LOSS_VALUES_TO_TEST = [0.01, 0.02, 0.03, 0.05, 0.10]  # voor backtest
 
 # Backtest
