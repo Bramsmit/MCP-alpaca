@@ -17,6 +17,9 @@ MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop
 # Stop-loss: vast bedrag per eenheid onder koopniveau
 # Backtest beste: $0.01/eenheid
 STOP_LOSS_PER_UNIT = 0.01
+
+# Dynamische order updates: herplaats order als prijs meer dan dit percentage afwijkt
+ORDER_UPDATE_THRESHOLD = 0.01  # 1%
 STOP_LOSS_VALUES_TO_TEST = [0.01, 0.02, 0.03, 0.05, 0.10]  # voor backtest
 
 # Backtest

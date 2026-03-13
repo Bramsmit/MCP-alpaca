@@ -32,6 +32,7 @@ from bot.config import (
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
     STOP_LOSS_PER_UNIT,
+    ORDER_UPDATE_THRESHOLD,
 )
 from bot.telegram import send_telegram, notify_trade
 
@@ -159,16 +160,37 @@ def run_once():
                         pass
 
         if pos_qty > 0:
-            # We hebben positie: zorg voor sell + stop-loss
-            has_sell = any(o.side == OrderSide.SELL for o in open_orders)
-            if not has_sell:
-                qty = pos_qty
-                entry = avg_entry if avg_entry > 0 else buy_level
-                stop_price = entry - STOP_LOSS_PER_UNIT
-                limit_sell = sell_level
+            # We hebben positie: zorg voor sell + stop-loss, update als prijs bewogen is
+            existing_sell = next((o for o in open_orders if o.side == OrderSide.SELL and o.order_type == OrderType.LIMIT), None)
+            existing_stop = next((o for o in open_orders if o.side == OrderSide.SELL and o.order_type == OrderType.STOP_LIMIT), None)
+            entry = avg_entry if avg_entry > 0 else buy_level
+            stop_price = entry - STOP_LOSS_PER_UNIT
+            limit_sell = sell_level
+            qty = pos_qty
 
+            needs_new_sell = True
+
+            if existing_sell:
+                old_sell_price = float(existing_sell.limit_price)
+                price_diff = abs(old_sell_price - limit_sell) / old_sell_price
+                if price_diff > ORDER_UPDATE_THRESHOLD:
+                    try:
+                        trading_client.cancel_order_by_id(existing_sell.id)
+                        # Cancel existing stop-limit too, so we can re-place both fresh
+                        if existing_stop:
+                            trading_client.cancel_order_by_id(existing_stop.id)
+                        print(f"  {symbol}: Sell order bijgewerkt ({old_sell_price:.4f} -> {limit_sell:.4f}, {price_diff*100:.1f}% verschil)")
+                        send_telegram(f"🔄 {symbol}: Sell order bijgewerkt @ ${limit_sell:.4f} (was ${old_sell_price:.4f})")
+                    except Exception as e:
+                        print(f"  {symbol}: Fout bij annuleren sell order: {e}")
+                        needs_new_sell = False
+                else:
+                    print(f"  {symbol}: Sell order ongewijzigd @ ${old_sell_price:.4f} ({price_diff*100:.1f}% verschil, onder drempel)")
+                    needs_new_sell = False
+
+            if needs_new_sell:
                 try:
-                    sell_order = trading_client.submit_order(
+                    trading_client.submit_order(
                         LimitOrderRequest(
                             symbol=symbol,
                             qty=qty,
@@ -178,7 +200,7 @@ def run_once():
                             limit_price=_round_price(limit_sell),
                         )
                     )
-                    stop_order = trading_client.submit_order(
+                    trading_client.submit_order(
                         StopLimitOrderRequest(
                             symbol=symbol,
                             qty=qty,
@@ -190,41 +212,59 @@ def run_once():
                         )
                     )
                     print(f"  {symbol}: Sell limit @ ${limit_sell:.4f} + stop @ ${stop_price:.4f}")
-                    send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} + stop @ ${stop_price:.4f} geplaatst")
+                    if not existing_sell:
+                        send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} + stop @ ${stop_price:.4f} geplaatst")
                 except Exception as e:
                     print(f"  {symbol}: Fout: {e}")
                     send_telegram(f"❌ {symbol}: Fout orders: {e}")
         else:
-            # Geen positie: plaats limit buy als we geen open buy hebben
-            has_buy = any(o.side == OrderSide.BUY for o in open_orders)
-            if has_buy:
-                print(f"  {symbol}: Open buy order al aanwezig, skip")
-            elif capital_per <= 1:
+            # Geen positie: plaats of update limit buy order
+            if capital_per <= 1:
                 print(f"  {symbol}: Te weinig kapitaal (${capital_per:.2f}), skip")
             elif buy_level < 0.0001:
                 # Alpaca: "limit price must be > 0" voor zeer lage prijzen (SHIB ~5e-6, PEPE)
                 print(f"  {symbol}: Prijs ${float(buy_level):.8f} te laag - Alpaca API accepteert dit niet")
                 send_telegram(f"⚠️ {symbol}: Overgeslagen (prijs te laag voor Alpaca limit orders)")
             else:
-                qty = capital_per / buy_level
-                limit_px = _round_price(buy_level)
-                try:
-                    trading_client.submit_order(
-                        LimitOrderRequest(
-                            symbol=symbol,
-                            qty=round(qty, 6),
-                            side=OrderSide.BUY,
-                            type=OrderType.LIMIT,
-                            time_in_force=TimeInForce.GTC,
-                            limit_price=limit_px,
+                existing_buy = next((o for o in open_orders if o.side == OrderSide.BUY), None)
+                needs_new_order = True
+
+                if existing_buy:
+                    old_price = float(existing_buy.limit_price)
+                    price_diff = abs(old_price - buy_level) / old_price
+                    if price_diff > ORDER_UPDATE_THRESHOLD:
+                        try:
+                            trading_client.cancel_order_by_id(existing_buy.id)
+                            print(f"  {symbol}: Buy order bijgewerkt ({old_price:.4f} -> {buy_level:.4f}, {price_diff*100:.1f}% verschil)")
+                            send_telegram(f"🔄 {symbol}: Buy order bijgewerkt @ ${buy_level:.4f} (was ${old_price:.4f})")
+                        except Exception as e:
+                            print(f"  {symbol}: Fout bij annuleren buy order: {e}")
+                            needs_new_order = False
+                    else:
+                        print(f"  {symbol}: Buy order ongewijzigd @ ${old_price:.4f} ({price_diff*100:.1f}% verschil, onder drempel)")
+                        needs_new_order = False
+
+                if needs_new_order:
+                    qty = capital_per / buy_level
+                    limit_px = _round_price(buy_level)
+                    try:
+                        trading_client.submit_order(
+                            LimitOrderRequest(
+                                symbol=symbol,
+                                qty=round(qty, 6),
+                                side=OrderSide.BUY,
+                                type=OrderType.LIMIT,
+                                time_in_force=TimeInForce.GTC,
+                                limit_price=limit_px,
+                            )
                         )
-                    )
-                    price_str = f"${buy_level:.8f}" if buy_level < 0.001 else f"${buy_level:.4f}"
-                    print(f"  {symbol}: Limit buy @ {price_str} (${capital_per:.0f})")
-                    send_telegram(f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_per:.0f}) geplaatst")
-                except Exception as e:
-                    print(f"  {symbol}: Fout buy: {e}")
-                    send_telegram(f"❌ {symbol}: Fout buy order: {e}")
+                        price_str = f"${buy_level:.8f}" if buy_level < 0.001 else f"${buy_level:.4f}"
+                        print(f"  {symbol}: Limit buy @ {price_str} (${capital_per:.0f})")
+                        if not existing_buy:
+                            send_telegram(f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_per:.0f}) geplaatst")
+                    except Exception as e:
+                        print(f"  {symbol}: Fout buy: {e}")
+                        send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
 
 def main():
