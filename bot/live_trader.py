@@ -22,7 +22,7 @@ from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import LimitOrderRequest, StopLimitOrderRequest, GetOrdersRequest
 from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus
 from alpaca.data.historical import CryptoHistoricalDataClient
-from alpaca.data.requests import CryptoBarsRequest
+from alpaca.data.requests import CryptoBarsRequest, CryptoLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
 
 from bot.config import (
@@ -34,6 +34,7 @@ from bot.config import (
     STOP_LOSS_PER_UNIT,
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
+    ORDER_STALE_PRICE_THRESHOLD,
 )
 from bot.telegram import send_telegram, notify_trade
 
@@ -48,6 +49,29 @@ def get_trading_clients():
         TradingClient(api_key, secret, paper=True),
         CryptoHistoricalDataClient(api_key, secret),
     )
+
+
+def get_current_prices(data_client, symbols: list[str]) -> dict[str, float]:
+    """Huidige prijs per symbol (mid van latest quote)."""
+    try:
+        request = CryptoLatestQuoteRequest(symbol_or_symbols=symbols)
+        quotes = data_client.get_crypto_latest_quote(request)
+        result = {}
+        for symbol in symbols:
+            q = quotes.get(symbol)
+            if q:
+                ap = float(q.ask_price or 0)
+                bp = float(q.bid_price or 0)
+                if ap and bp:
+                    result[symbol] = (ap + bp) / 2
+                elif ap:
+                    result[symbol] = ap
+                elif bp:
+                    result[symbol] = bp
+        return result
+    except Exception as e:
+        print(f"  get_current_prices fout: {e}")
+        return {}
 
 
 def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, float]]:
@@ -145,6 +169,7 @@ def run_once():
     trading_client, data_client = get_trading_clients()
 
     levels = get_24h_levels(data_client, SYMBOLS)
+    current_prices = get_current_prices(data_client, SYMBOLS)
     positions = get_positions(trading_client)
     buying_power = get_buying_power(trading_client)
 
@@ -153,6 +178,7 @@ def run_once():
 
     print(f"Buying power: ${buying_power:.2f} | Per asset: ${capital_per:.2f}")
     print(f"Levels: {levels}")
+    print(f"Current prices: {current_prices}")
     print(f"Positions: {positions}")
     print()
 
@@ -259,8 +285,19 @@ def run_once():
                     old_price = float(existing_buy.limit_price)
                     age_hours = _order_age_hours(existing_buy)
                     price_diff = abs(old_price - buy_level) / old_price
+                    current_price = current_prices.get(symbol)
 
-                    if age_hours >= ORDER_MAX_AGE_HOURS:
+                    # Stale price: huidige prijs >5% boven order -> vult waarschijnlijk niet
+                    if current_price and current_price > old_price * (1 + ORDER_STALE_PRICE_THRESHOLD):
+                        try:
+                            trading_client.cancel_order_by_id(existing_buy.id)
+                            pct_above = (current_price - old_price) / old_price * 100
+                            print(f"  {symbol}: Buy order vervangen (prijs ${current_price:.2f} is {pct_above:.1f}% boven order)")
+                            send_telegram(f"🔄 {symbol}: Buy order vervangen, prijs {pct_above:.1f}% boven order, nieuwe @ ${buy_level:.4f}")
+                        except Exception as e:
+                            print(f"  {symbol}: Fout bij annuleren buy order: {e}")
+                            needs_new_order = False
+                    elif age_hours >= ORDER_MAX_AGE_HOURS:
                         try:
                             trading_client.cancel_order_by_id(existing_buy.id)
                             print(f"  {symbol}: Buy order vervangen na {age_hours:.0f}h (verse 24h window)")
