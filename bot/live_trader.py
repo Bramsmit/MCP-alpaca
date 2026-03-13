@@ -4,9 +4,14 @@ Live paper trading bot - range strategie voor AVAX, UNI, AAVE.
 Draait 1x per dag of via cron. Plaatst limit buy/sell en stop-loss orders.
 """
 
+import logging
 import os
+import time
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+log = logging.getLogger(__name__)
 
 # Laad .env
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -70,13 +75,13 @@ def get_current_prices(data_client, symbols: list[str]) -> dict[str, float]:
                     result[symbol] = bp
         return result
     except Exception as e:
-        print(f"  get_current_prices fout: {e}")
+        log.warning("get_current_prices fout: %s", e)
         return {}
 
 
 def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, float]]:
     """Haal vorige dag high/low op voor buy/sell niveaus."""
-    end = datetime.utcnow()
+    end = datetime.now(timezone.utc)
     start = end - timedelta(days=5)
 
     request = CryptoBarsRequest(
@@ -176,11 +181,13 @@ def run_once():
     # Cash per asset: 1/3 van totaal
     capital_per = min(CAPITAL_PER_ASSET, buying_power / 3)
 
-    print(f"Buying power: ${buying_power:.2f} | Per asset: ${capital_per:.2f}")
-    print(f"Levels: {levels}")
-    print(f"Current prices: {current_prices}")
-    print(f"Positions: {positions}")
-    print()
+    stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
+
+    log.info("Buying power: $%.2f | Per asset: $%.2f", buying_power, capital_per)
+    log.info("Levels: %s", levels)
+    log.info("Current prices: %s", current_prices)
+    log.info("Positions: %s", positions)
+    log.info("")
 
     for symbol in SYMBOLS:
         if symbol not in levels:
@@ -196,7 +203,7 @@ def run_once():
                 if o.side == OrderSide.SELL:
                     try:
                         trading_client.cancel_order_by_id(o.id)
-                        print(f"  {symbol}: Orphan sell order geannuleerd")
+                        log.info("  %s: Orphan sell order geannuleerd", symbol)
                     except Exception:
                         pass
 
@@ -215,29 +222,46 @@ def run_once():
                 old_sell_price = float(existing_sell.limit_price)
                 age_hours = _order_age_hours(existing_sell)
                 price_diff = abs(old_sell_price - limit_sell) / old_sell_price
+                current_price = current_prices.get(symbol)
 
-                if age_hours >= ORDER_MAX_AGE_HOURS:
+                # Stale price: huidige prijs >5% onder sell target -> order te optimistisch
+                if current_price and current_price < limit_sell * (1 - ORDER_STALE_PRICE_THRESHOLD):
                     try:
                         trading_client.cancel_order_by_id(existing_sell.id)
                         if existing_stop:
                             trading_client.cancel_order_by_id(existing_stop.id)
-                        print(f"  {symbol}: Sell order vervangen na {age_hours:.0f}h (verse 24h window)")
-                        send_telegram(f"🔄 {symbol}: Sell order vervangen na {age_hours:.0f}h, nieuwe levels @ ${limit_sell:.4f}")
+                        pct_below = (limit_sell - current_price) / limit_sell * 100
+                        log.info("  %s: Sell order vervangen (prijs $%.2f is %.1f%% onder target)", symbol, current_price, pct_below)
+                        send_telegram(f"🔄 {symbol}: Sell order vervangen, prijs {pct_below:.1f}% onder target, nieuwe @ ${limit_sell:.4f}")
+                        stats["updated"] += 1
                     except Exception as e:
-                        print(f"  {symbol}: Fout bij annuleren sell order: {e}")
+                        log.warning("  %s: Fout bij annuleren sell order: %s", symbol, e)
+                        needs_new_sell = False
+                elif age_hours >= ORDER_MAX_AGE_HOURS:
+                    try:
+                        trading_client.cancel_order_by_id(existing_sell.id)
+                        if existing_stop:
+                            trading_client.cancel_order_by_id(existing_stop.id)
+                        log.info("  %s: Sell order vervangen na %.0fh (verse 24h window)", symbol, age_hours)
+                        send_telegram(f"🔄 {symbol}: Sell order vervangen na {age_hours:.0f}h, nieuwe levels @ ${limit_sell:.4f}")
+                        stats["updated"] += 1
+                    except Exception as e:
+                        log.warning("  %s: Fout bij annuleren sell order: %s", symbol, e)
                         needs_new_sell = False
                 elif price_diff > ORDER_UPDATE_THRESHOLD:
                     try:
                         trading_client.cancel_order_by_id(existing_sell.id)
                         if existing_stop:
                             trading_client.cancel_order_by_id(existing_stop.id)
-                        print(f"  {symbol}: Sell order bijgewerkt ({old_sell_price:.4f} -> {limit_sell:.4f}, {price_diff*100:.1f}% verschil)")
+                        log.info("  %s: Sell order bijgewerkt (%.4f -> %.4f, %.1f%% verschil)", symbol, old_sell_price, limit_sell, price_diff * 100)
                         send_telegram(f"🔄 {symbol}: Sell order bijgewerkt @ ${limit_sell:.4f} (was ${old_sell_price:.4f})")
+                        stats["updated"] += 1
                     except Exception as e:
-                        print(f"  {symbol}: Fout bij annuleren sell order: {e}")
+                        log.warning("  %s: Fout bij annuleren sell order: %s", symbol, e)
                         needs_new_sell = False
                 else:
-                    print(f"  {symbol}: Sell order ongewijzigd @ ${old_sell_price:.4f} ({price_diff*100:.1f}% verschil, {age_hours:.0f}h oud)")
+                    log.info("  %s: Sell order ongewijzigd @ $%.4f (%.1f%% verschil, %.0fh oud)", symbol, old_sell_price, price_diff * 100, age_hours)
+                    stats["unchanged"] += 1
                     needs_new_sell = False
 
             if needs_new_sell:
@@ -263,20 +287,23 @@ def run_once():
                             limit_price=_round_price(stop_price),
                         )
                     )
-                    print(f"  {symbol}: Sell limit @ ${limit_sell:.4f} + stop @ ${stop_price:.4f}")
+                    log.info("  %s: Sell limit @ $%.4f + stop @ $%.4f", symbol, limit_sell, stop_price)
                     if not existing_sell:
                         send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} + stop @ ${stop_price:.4f} geplaatst")
+                        stats["placed"] += 1
                 except Exception as e:
-                    print(f"  {symbol}: Fout: {e}")
+                    log.warning("  %s: Fout: %s", symbol, e)
                     send_telegram(f"❌ {symbol}: Fout orders: {e}")
         else:
             # Geen positie: plaats of update limit buy order
             if capital_per <= 1:
-                print(f"  {symbol}: Te weinig kapitaal (${capital_per:.2f}), skip")
+                log.info("  %s: Te weinig kapitaal ($%.2f), skip", symbol, capital_per)
+                stats["skipped"] += 1
             elif buy_level < 0.0001:
                 # Alpaca: "limit price must be > 0" voor zeer lage prijzen (SHIB ~5e-6, PEPE)
-                print(f"  {symbol}: Prijs ${float(buy_level):.8f} te laag - Alpaca API accepteert dit niet")
+                log.info("  %s: Prijs $%.8f te laag - Alpaca API accepteert dit niet", symbol, float(buy_level))
                 send_telegram(f"⚠️ {symbol}: Overgeslagen (prijs te laag voor Alpaca limit orders)")
+                stats["skipped"] += 1
             else:
                 existing_buy = next((o for o in open_orders if o.side == OrderSide.BUY), None)
                 needs_new_order = True
@@ -292,29 +319,33 @@ def run_once():
                         try:
                             trading_client.cancel_order_by_id(existing_buy.id)
                             pct_above = (current_price - old_price) / old_price * 100
-                            print(f"  {symbol}: Buy order vervangen (prijs ${current_price:.2f} is {pct_above:.1f}% boven order)")
+                            log.info("  %s: Buy order vervangen (prijs $%.2f is %.1f%% boven order)", symbol, current_price, pct_above)
                             send_telegram(f"🔄 {symbol}: Buy order vervangen, prijs {pct_above:.1f}% boven order, nieuwe @ ${buy_level:.4f}")
+                            stats["updated"] += 1
                         except Exception as e:
-                            print(f"  {symbol}: Fout bij annuleren buy order: {e}")
+                            log.warning("  %s: Fout bij annuleren buy order: %s", symbol, e)
                             needs_new_order = False
                     elif age_hours >= ORDER_MAX_AGE_HOURS:
                         try:
                             trading_client.cancel_order_by_id(existing_buy.id)
-                            print(f"  {symbol}: Buy order vervangen na {age_hours:.0f}h (verse 24h window)")
+                            log.info("  %s: Buy order vervangen na %.0fh (verse 24h window)", symbol, age_hours)
                             send_telegram(f"🔄 {symbol}: Buy order vervangen na {age_hours:.0f}h, nieuwe levels @ ${buy_level:.4f}")
+                            stats["updated"] += 1
                         except Exception as e:
-                            print(f"  {symbol}: Fout bij annuleren buy order: {e}")
+                            log.warning("  %s: Fout bij annuleren buy order: %s", symbol, e)
                             needs_new_order = False
                     elif price_diff > ORDER_UPDATE_THRESHOLD:
                         try:
                             trading_client.cancel_order_by_id(existing_buy.id)
-                            print(f"  {symbol}: Buy order bijgewerkt ({old_price:.4f} -> {buy_level:.4f}, {price_diff*100:.1f}% verschil)")
+                            log.info("  %s: Buy order bijgewerkt (%.4f -> %.4f, %.1f%% verschil)", symbol, old_price, buy_level, price_diff * 100)
                             send_telegram(f"🔄 {symbol}: Buy order bijgewerkt @ ${buy_level:.4f} (was ${old_price:.4f})")
+                            stats["updated"] += 1
                         except Exception as e:
-                            print(f"  {symbol}: Fout bij annuleren buy order: {e}")
+                            log.warning("  %s: Fout bij annuleren buy order: %s", symbol, e)
                             needs_new_order = False
                     else:
-                        print(f"  {symbol}: Buy order ongewijzigd @ ${old_price:.4f} ({price_diff*100:.1f}% verschil, {age_hours:.0f}h oud)")
+                        log.info("  %s: Buy order ongewijzigd @ $%.4f (%.1f%% verschil, %.0fh oud)", symbol, old_price, price_diff * 100, age_hours)
+                        stats["unchanged"] += 1
                         needs_new_order = False
 
                 if needs_new_order:
@@ -332,28 +363,44 @@ def run_once():
                             )
                         )
                         price_str = f"${buy_level:.8f}" if buy_level < 0.001 else f"${buy_level:.4f}"
-                        print(f"  {symbol}: Limit buy @ {price_str} (${capital_per:.0f})")
+                        log.info("  %s: Limit buy @ %s ($%.0f)", symbol, price_str, capital_per)
                         if not existing_buy:
                             send_telegram(f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_per:.0f}) geplaatst")
+                            stats["placed"] += 1
                     except Exception as e:
-                        print(f"  {symbol}: Fout buy: {e}")
+                        log.warning("  %s: Fout buy: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout buy order: {e}")
+
+    # Run summary
+    summary = f"Run: {stats['placed']} geplaatst, {stats['updated']} bijgewerkt, {stats['unchanged']} ongewijzigd, {stats['skipped']} overgeslagen"
+    log.info(summary)
+    send_telegram(f"📋 {summary}")
+    return stats
 
 
 def main():
-    print("=" * 50)
-    print("MCP-Alpaca Live Paper Trader")
-    print("=" * 50)
-    print(f"Assets: {', '.join(SYMBOLS)}")
-    print(f"Run op: {datetime.now().isoformat()}")
-    print()
-    try:
-        run_once()
-        print("Klaar.")
-    except Exception as e:
-        print(f"Fout: {e}")
-        send_telegram(f"❌ Bot fout: {e}")
-        raise
+    log.info("=" * 50)
+    log.info("MCP-Alpaca Live Paper Trader")
+    log.info("=" * 50)
+    log.info("Assets: %s", ", ".join(SYMBOLS))
+    log.info("Run op: %s", datetime.now().isoformat())
+    log.info("")
+
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        try:
+            run_once()
+            log.info("Klaar.")
+            return
+        except Exception as e:
+            log.warning("Fout (poging %d/%d): %s", attempt + 1, max_retries + 1, e)
+            if attempt < max_retries:
+                wait_sec = 5 * (attempt + 1)
+                log.info("Retry over %d sec...", wait_sec)
+                time.sleep(wait_sec)
+            else:
+                send_telegram(f"❌ Bot fout: {e}")
+                raise
 
 
 if __name__ == "__main__":

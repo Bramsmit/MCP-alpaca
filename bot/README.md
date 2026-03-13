@@ -42,6 +42,18 @@ Of vaker (bijv. elk uur) voor snellere order-updates:
 - **Stop-loss:** $0.01/eenheid
 - **Alpaca:** Paper trading (zie .env)
 
+### Dynamische order updates
+
+- **1% drempel:** Order wordt bijgewerkt als het nieuwe niveau >1% afwijkt
+- **24h window:** Na 24 uur zonder fill: cancel en herplaats met verse 24h levels
+- **Stale price (5%):** Buy: als huidige prijs >5% boven order, direct herplaats. Sell: als prijs >5% onder target, herplaats
+- **Retry:** Bij API-fout: 2 retries met 5–10 sec pauze
+- **Run summary:** Elke run stuurt een Telegram-samenvatting (geplaatst, bijgewerkt, ongewijzigd, overgeslagen)
+
+### GitHub Actions
+
+De bot draait elk uur via `.github/workflows/trade.yml`. Secrets: ALPACA_API_KEY, ALPACA_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
+
 ## Telegram notificaties
 
 ### 1. Chat ID ophalen
