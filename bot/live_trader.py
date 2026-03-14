@@ -40,6 +40,7 @@ from bot.config import (
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
     ORDER_STALE_PRICE_THRESHOLD,
+    ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
 )
 from bot.telegram import send_telegram, notify_trade
 
@@ -266,8 +267,9 @@ def run_once():
 
             if needs_new_sell:
                 try:
-                    # Alpaca crypto: geen bracket orders - slechts 1 exit order per positie.
-                    # Alleen limit sell (take-profit). Stop-loss zou 2e order vereisen -> "available: 0".
+                    # ALPACA CRYPTO LIMITATIE: slechts 1 exit order per positie (ALPACA_CRYPTO_SINGLE_EXIT_ORDER).
+                    # Plaats NOOIT een 2e sell order (bijv. stop-loss) - faalt met "insufficient balance, available: 0".
+                    assert ALPACA_CRYPTO_SINGLE_EXIT_ORDER, "Alpaca crypto: max 1 exit order per positie"
                     trading_client.submit_order(
                         LimitOrderRequest(
                             symbol=symbol,

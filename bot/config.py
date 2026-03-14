@@ -18,6 +18,10 @@ MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop
 # Backtest beste: $0.01/eenheid
 STOP_LOSS_PER_UNIT = 0.01
 
+# Alpaca crypto: slechts 1 exit order per positie (geen bracket orders).
+# Plaats NOOIT limit sell + stop-loss tegelijk - 2e order faalt met "available: 0".
+ALPACA_CRYPTO_SINGLE_EXIT_ORDER = True
+
 # Dynamische order updates: herplaats order als prijs meer dan dit percentage afwijkt
 ORDER_UPDATE_THRESHOLD = 0.01  # 1%
 
