@@ -24,7 +24,7 @@ if env_path.exists():
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import LimitOrderRequest, StopLimitOrderRequest, GetOrdersRequest
+from alpaca.trading.requests import LimitOrderRequest, GetOrdersRequest
 from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus
 from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoBarsRequest, CryptoLatestQuoteRequest
@@ -266,6 +266,8 @@ def run_once():
 
             if needs_new_sell:
                 try:
+                    # Alpaca crypto: geen bracket orders - slechts 1 exit order per positie.
+                    # Alleen limit sell (take-profit). Stop-loss zou 2e order vereisen -> "available: 0".
                     trading_client.submit_order(
                         LimitOrderRequest(
                             symbol=symbol,
@@ -276,20 +278,9 @@ def run_once():
                             limit_price=_round_price(limit_sell),
                         )
                     )
-                    trading_client.submit_order(
-                        StopLimitOrderRequest(
-                            symbol=symbol,
-                            qty=qty,
-                            side=OrderSide.SELL,
-                            type=OrderType.STOP_LIMIT,
-                            time_in_force=TimeInForce.GTC,
-                            stop_price=_round_price(stop_price),
-                            limit_price=_round_price(stop_price),
-                        )
-                    )
-                    log.info("  %s: Sell limit @ $%.4f + stop @ $%.4f", symbol, limit_sell, stop_price)
+                    log.info("  %s: Sell limit @ $%.4f (stop @ $%.4f niet geplaatst - crypto 1 order/positie)", symbol, limit_sell, stop_price)
                     if not existing_sell:
-                        send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} + stop @ ${stop_price:.4f} geplaatst")
+                        send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
                         stats["placed"] += 1
                 except Exception as e:
                     log.warning("  %s: Fout: %s", symbol, e)

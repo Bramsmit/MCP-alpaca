@@ -39,7 +39,7 @@ Of vaker (bijv. elk uur) voor snellere order-updates:
 
 - **Assets:** AVAX, UNI, AAVE (SHIB/PEPE: prijs te laag voor Alpaca limit orders)
 - **Strategie:** Koop 0.5% boven 24h low, verkoop 2% onder 24h high
-- **Stop-loss:** $0.01/eenheid
+- **Stop-loss:** $0.01/eenheid (Alpaca crypto ondersteunt geen bracket orders - alleen limit sell, geen aparte stop)
 - **Alpaca:** Paper trading (zie .env)
 
 ### Dynamische order updates
