@@ -25,6 +25,7 @@ from bot.config import (
     SYMBOLS,
     START_CAPITAL,
     CAPITAL_PER_ASSET,
+    LEVELS_LOOKBACK_DAYS,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
@@ -93,12 +94,14 @@ def run_backtest(
     for i, (ts, row) in enumerate(df.iterrows()):
         high, low, close = row["high"], row["low"], row["close"]
 
-        # Gebruik VORIGE dag voor niveaus (geen look-ahead)
-        if i == 0:
-            prev_high, prev_low = high, low  # eerste dag: gebruik deze dag
+        # Gebruik gem. van laatste N dagen voor niveaus (geen look-ahead, minder uitschieters)
+        start_idx = max(0, i - LEVELS_LOOKBACK_DAYS)
+        window = df.iloc[start_idx:i]
+        if len(window) == 0:
+            prev_high, prev_low = high, low
         else:
-            prev_row = df.iloc[i - 1]
-            prev_high, prev_low = prev_row["high"], prev_row["low"]
+            prev_high = window["high"].mean()
+            prev_low = window["low"].mean()
 
         buy_level = prev_low * (1 + BUY_ABOVE_LOW_PCT)
         sell_level = prev_high * (1 - SELL_BELOW_HIGH_PCT)

@@ -20,8 +20,10 @@ START_CAPITAL = 1000
 CAPITAL_PER_ASSET = START_CAPITAL / SYMBOLS_ACTIVE  # verdeel over actieve symbolen
 
 # Range niveaus (rolling 24h met daily bars)
-BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de low
-SELL_BELOW_HIGH_PCT = 0.02  # 2% onder de high
+# Gebruik gemiddelde van laatste 3 dagen i.p.v. 1 dag - minder gevoelig voor uitschieters
+LEVELS_LOOKBACK_DAYS = 3
+BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de gem. low
+SELL_BELOW_HIGH_PCT = 0.02  # 2% onder de gem. high
 MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop
 
 # Stop-loss: vast bedrag per eenheid onder koopniveau

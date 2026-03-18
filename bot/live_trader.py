@@ -34,6 +34,7 @@ from bot.config import (
     SYMBOL_POOL,
     SYMBOLS_ACTIVE,
     CAPITAL_PER_ASSET,
+    LEVELS_LOOKBACK_DAYS,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
@@ -98,11 +99,13 @@ def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, fl
     for symbol in symbols:
         if symbol not in bars.df.index.get_level_values(0):
             continue
-        df = bars.df.loc[symbol].tail(3)
-        if len(df) < 2:
+        df = bars.df.loc[symbol].tail(LEVELS_LOOKBACK_DAYS + 2)
+        if len(df) < LEVELS_LOOKBACK_DAYS:
             continue
-        prev = df.iloc[-2]
-        high, low = prev["high"], prev["low"]
+        # Gemiddelde van laatste N dagen (minder gevoelig voor uitschieters dan 1 dag)
+        recent = df.tail(LEVELS_LOOKBACK_DAYS)
+        low = float(recent["low"].mean())
+        high = float(recent["high"].mean())
         buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
         sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
         if sell_level >= buy_level * (1 + MIN_SPREAD_PCT):
@@ -126,11 +129,12 @@ def _get_levels_and_scores(data_client, symbols: list[str]) -> dict[str, tuple[f
     for symbol in symbols:
         if symbol not in bars.df.index.get_level_values(0):
             continue
-        df = bars.df.loc[symbol].tail(3)
-        if len(df) < 2:
+        df = bars.df.loc[symbol].tail(LEVELS_LOOKBACK_DAYS + 2)
+        if len(df) < LEVELS_LOOKBACK_DAYS:
             continue
-        prev = df.iloc[-2]
-        high, low = prev["high"], prev["low"]
+        recent = df.tail(LEVELS_LOOKBACK_DAYS)
+        low = float(recent["low"].mean())
+        high = float(recent["high"].mean())
         buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
         sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
         spread_ok = sell_level >= buy_level * (1 + MIN_SPREAD_PCT)
