@@ -3,6 +3,7 @@ dist
 .DS_Store
 .env
 .cursor/mcp.json
+.alpaca_trade_state.json
 __pycache__
 *.pyc
 alpaca-server/

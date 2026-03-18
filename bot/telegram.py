@@ -54,6 +54,20 @@ def notify_trade(side: str, symbol: str, qty: float, price: float, order_id: str
     return send_telegram(msg)
 
 
+def notify_trade_filled(
+    side: str, symbol: str, qty: float, price: float, profit: float | None, portfolio_value: float
+) -> bool:
+    """Stuur een notificatie bij een gevulde trade."""
+    emoji = "🟢" if side.lower() == "buy" else "🔴"
+    msg = f"{emoji} Trade: {side.upper()} {qty} {symbol} @ ${price:.4f}"
+    if profit is not None and side.lower() == "sell":
+        entry_val = price * qty - profit
+        pct = (profit / entry_val * 100) if entry_val else 0
+        msg += f"\n💰 Verdiend: ${profit:.2f} ({pct:+.1f}%)"
+    msg += f"\n📊 Totaal portfolio: ${portfolio_value:.2f}"
+    return send_telegram(msg)
+
+
 def notify_stop_loss(symbol: str, qty: float, price: float) -> bool:
     """Stuur een stop-loss notificatie."""
     msg = f"🛑 STOP-LOSS: {qty} {symbol} verkocht @ ${price:.4f}"

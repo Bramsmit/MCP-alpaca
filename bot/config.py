@@ -2,12 +2,22 @@
 Configuratie voor de range-trading bot.
 """
 
-# Assets (SHIB/PEPE: Alpaca geeft "limit price must be > 0" - gebruik AVAX ipv SHIB)
-SYMBOLS = ["AVAX/USD", "UNI/USD", "AAVE/USD"]
+# Pool van altcoins (SHIB/PEPE overgeslagen: Alpaca limit price issues)
+SYMBOL_POOL = [
+    "AVAX/USD", "UNI/USD", "AAVE/USD", "LINK/USD", "DOT/USD",
+    "SOL/USD", "ADA/USD", "XRP/USD", "BCH/USD", "LTC/USD",
+    "CRV/USD", "DOGE/USD", "ETH/USD", "BTC/USD",
+]
+
+# Hoeveel symbolen actief getrade worden (geselecteerd op winstgevendheid)
+SYMBOLS_ACTIVE = 3
+
+# Voor backtest: eerste N uit pool (zelfde subset als live)
+SYMBOLS = SYMBOL_POOL[:SYMBOLS_ACTIVE]
 
 # Kapitaal
 START_CAPITAL = 1000
-CAPITAL_PER_ASSET = START_CAPITAL / 3  # 1/3 per crypto
+CAPITAL_PER_ASSET = START_CAPITAL / SYMBOLS_ACTIVE  # verdeel over actieve symbolen
 
 # Range niveaus (rolling 24h met daily bars)
 BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de low

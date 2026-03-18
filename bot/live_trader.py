@@ -25,13 +25,14 @@ if env_path.exists():
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import LimitOrderRequest, GetOrdersRequest
-from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus
+from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus, OrderStatus
 from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoBarsRequest, CryptoLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
 
 from bot.config import (
-    SYMBOLS,
+    SYMBOL_POOL,
+    SYMBOLS_ACTIVE,
     CAPITAL_PER_ASSET,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
@@ -42,7 +43,7 @@ from bot.config import (
     ORDER_STALE_PRICE_THRESHOLD,
     ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
 )
-from bot.telegram import send_telegram, notify_trade
+from bot.telegram import send_telegram, notify_trade, notify_trade_filled
 
 
 def get_trading_clients():
@@ -109,6 +110,70 @@ def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, fl
     return result
 
 
+def _get_levels_and_scores(data_client, symbols: list[str]) -> dict[str, tuple[float, float, float]]:
+    """Levels + score per symbol. score = spread_pct * (1 + range_volatility)."""
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=5)
+    request = CryptoBarsRequest(
+        symbol_or_symbols=symbols,
+        timeframe=TimeFrame.Day,
+        start=start,
+        end=end,
+    )
+    bars = data_client.get_crypto_bars(request)
+    result = {}
+
+    for symbol in symbols:
+        if symbol not in bars.df.index.get_level_values(0):
+            continue
+        df = bars.df.loc[symbol].tail(3)
+        if len(df) < 2:
+            continue
+        prev = df.iloc[-2]
+        high, low = prev["high"], prev["low"]
+        buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
+        sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
+        spread_ok = sell_level >= buy_level * (1 + MIN_SPREAD_PCT)
+        spread_pct = (sell_level - buy_level) / buy_level if spread_ok else 0
+        range_pct = (high - low) / low if low else 0
+        score = spread_pct * (1 + range_pct)
+        result[symbol] = (buy_level, sell_level, score)
+    return result
+
+
+def select_top_symbols(
+    data_client, trading_client, pool: list[str], n: int
+) -> tuple[list[str], dict[str, tuple[float, float]]]:
+    """
+    Selecteer top N meest winstgevende symbolen uit pool.
+    Symbolen met open posities blijven altijd actief.
+    Retourneert (symbols, levels).
+    """
+    levels_scored = _get_levels_and_scores(data_client, pool)
+    positions = get_positions(trading_client, symbols=pool)
+    symbols_with_positions = set(positions.keys())
+
+    # Sorteer op score (hoogste eerst)
+    sorted_by_score = sorted(
+        levels_scored.items(),
+        key=lambda x: x[1][2],
+        reverse=True,
+    )
+
+    selected = list(symbols_with_positions)
+    for sym, (buy, sell, _) in sorted_by_score:
+        if sym not in selected and len(selected) < n:
+            selected.append(sym)
+
+    levels = {sym: (buy, sell) for sym, (buy, sell, _) in sorted_by_score if sym in selected}
+    # Voor symbolen met posities zonder levels (geen bar data): haal levels apart op
+    missing = [s for s in selected if s not in levels]
+    if missing:
+        fallback = get_24h_levels(data_client, missing)
+        levels.update(fallback)
+    return selected, levels
+
+
 def _round_price(price: float) -> float:
     """Round price to pass Alpaca validation. Explicit float() voor numpy types."""
     p = float(price)
@@ -130,13 +195,13 @@ def _norm_symbol(s: str) -> str:
     return f"{s}/USD"
 
 
-def get_positions(trading_client) -> dict[str, tuple[float, float]]:
-    """Posities per symbol: {symbol: (qty, avg_entry_price)}."""
+def get_positions(trading_client, symbols: list[str] | None = None) -> dict[str, tuple[float, float]]:
+    """Posities per symbol: {symbol: (qty, avg_entry_price)}. Filter op symbols indien gegeven."""
     positions = trading_client.get_all_positions()
     out = {}
     for p in positions:
         sym = _norm_symbol(p.symbol)
-        if sym in SYMBOLS:
+        if symbols is None or sym in symbols:
             out[sym] = (float(p.qty), float(p.avg_entry_price or 0))
     return out
 
@@ -170,27 +235,121 @@ def get_buying_power(trading_client) -> float:
     return float(acc.cash)
 
 
+def get_portfolio_value(trading_client) -> float:
+    """Totaal portfolio waarde (equity)."""
+    acc = trading_client.get_account()
+    return float(getattr(acc, "equity", 0) or getattr(acc, "portfolio_value", 0) or 0)
+
+
+def _state_path() -> Path:
+    return Path(__file__).resolve().parent.parent / ".alpaca_trade_state.json"
+
+
+def _load_state() -> dict:
+    """Laad state uit file."""
+    path = _state_path()
+    if not path.exists():
+        return {"entries": {}, "notified_order_ids": []}
+    try:
+        import json
+        data = json.loads(path.read_text())
+        return {
+            "entries": data.get("entries", {}),
+            "notified_order_ids": data.get("notified_order_ids", []),
+        }
+    except Exception:
+        return {"entries": {}, "notified_order_ids": []}
+
+
+def _save_state(entries: dict | None = None, notified_ids: list[str] | None = None) -> None:
+    """Bewaar state. entries/notified_ids = None betekent: niet overschrijven."""
+    path = _state_path()
+    state = _load_state()
+    if entries is not None:
+        state["entries"] = entries
+    if notified_ids is not None:
+        state["notified_order_ids"] = notified_ids[-200:]
+    try:
+        import json
+        path.write_text(json.dumps(state, indent=2))
+    except Exception as e:
+        log.warning("Kon state niet opslaan: %s", e)
+
+
+def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
+    """Check gevulde orders sinds vorige run, stuur Telegram notificatie. Retourneert aantal nieuwe trades."""
+    try:
+        after = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        req = GetOrdersRequest(status=QueryOrderStatus.CLOSED, after=after)
+        orders = trading_client.get_orders(req)
+        portfolio_value = get_portfolio_value(trading_client)
+        state = _load_state()
+        entries = dict(state["entries"])
+        notified_ids = list(state.get("notified_order_ids", []))
+        new_notified = []
+
+        for o in orders or []:
+            if getattr(o, "status", None) != OrderStatus.FILLED:
+                continue
+            oid = str(getattr(o, "id", ""))
+            if oid in notified_ids:
+                continue
+            sym = _norm_symbol(o.symbol)
+            if sym not in symbols:
+                continue
+            qty = float(o.filled_qty or 0)
+            price = float(o.filled_avg_price or 0)
+            if not qty or not price:
+                continue
+            side = "buy" if o.side == OrderSide.BUY else "sell"
+            profit = None
+            if side == "sell" and sym in entries:
+                entry = entries[sym].get("entry", 0)
+                if entry:
+                    profit = (price - entry) * qty
+                del entries[sym]
+            notify_trade_filled(side, sym, qty, price, profit, portfolio_value)
+            new_notified.append(oid)
+
+        if new_notified:
+            _save_state(notified_ids=notified_ids + new_notified)
+        return len(new_notified)
+    except Exception as e:
+        log.warning("check filled orders: %s", e)
+        return 0
+
+
 def run_once():
     """Eén run van de trading bot."""
     trading_client, data_client = get_trading_clients()
 
-    levels = get_24h_levels(data_client, SYMBOLS)
-    current_prices = get_current_prices(data_client, SYMBOLS)
-    positions = get_positions(trading_client)
+    # Selecteer top N meest winstgevende symbolen uit pool
+    symbols, levels = select_top_symbols(
+        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE
+    )
+    if not symbols:
+        log.warning("Geen symbolen geselecteerd uit pool")
+        send_telegram("⚠️ Geen symbolen geselecteerd uit pool")
+        return {}
+
+    new_trades = _check_and_notify_filled_orders(trading_client, SYMBOL_POOL)
+
+    current_prices = get_current_prices(data_client, symbols)
+    positions = get_positions(trading_client, symbols=symbols)
     buying_power = get_buying_power(trading_client)
 
-    # Cash per asset: 1/3 van totaal
-    capital_per = min(CAPITAL_PER_ASSET, buying_power / 3)
+    capital_per = min(CAPITAL_PER_ASSET, buying_power / len(symbols))
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
+    log.info("Geselecteerd: %s", ", ".join(symbols))
     log.info("Buying power: $%.2f | Per asset: $%.2f", buying_power, capital_per)
     log.info("Levels: %s", levels)
     log.info("Current prices: %s", current_prices)
     log.info("Positions: %s", positions)
     log.info("")
 
-    for symbol in SYMBOLS:
+    for symbol in symbols:
         if symbol not in levels:
             continue
         buy_level, sell_level = levels[symbol]
@@ -364,8 +523,15 @@ def run_once():
                         log.warning("  %s: Fout buy: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
-    # Run summary
-    summary = f"Run: {stats['placed']} geplaatst, {stats['updated']} bijgewerkt, {stats['unchanged']} ongewijzigd, {stats['skipped']} overgeslagen"
+    # Bewaar entry prices voor volgende run (profit berekening bij sell)
+    entries = {sym: {"qty": qty, "entry": entry} for sym, (qty, entry) in positions.items() if entry > 0}
+    _save_state(entries=entries)
+
+    # Run summary (incl. trade-status en actieve symbolen)
+    trade_status = f"{new_trades} nieuwe trade(s) gevuld" if new_trades else "Geen nieuwe trades gevuld"
+    summary = f"Run: {stats['placed']} geplaatst, {stats['updated']} bijgewerkt, {stats['unchanged']} ongewijzigd, {stats['skipped']} overgeslagen | {trade_status}"
+    if symbols:
+        summary += f"\nActief: {', '.join(symbols)}"
     log.info(summary)
     send_telegram(f"📋 {summary}")
     return stats
@@ -375,7 +541,7 @@ def main():
     log.info("=" * 50)
     log.info("MCP-Alpaca Live Paper Trader")
     log.info("=" * 50)
-    log.info("Assets: %s", ", ".join(SYMBOLS))
+    log.info("Pool: %s (top %d actief)", ", ".join(SYMBOL_POOL), SYMBOLS_ACTIVE)
     log.info("Run op: %s", datetime.now().isoformat())
     log.info("")
 

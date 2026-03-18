@@ -19,6 +19,7 @@ if env_path.exists():
 
 import pandas as pd
 from bot.config import (
+    SYMBOL_POOL,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
@@ -27,25 +28,19 @@ from bot.config import (
 )
 from bot.backtest import fetch_data, run_backtest
 
-SYMBOLS_TO_TEST = [
-    "BTC/USD", "ETH/USD", "SOL/USD", "DOGE/USD", "LTC/USD",
-    "AVAX/USD", "LINK/USD", "UNI/USD", "ADA/USD", "DOT/USD",
-    "XRP/USD", "BCH/USD", "PEPE/USD", "SHIB/USD", "AAVE/USD", "CRV/USD",
-]
-
 
 def main():
     print("Backtest alle cryptos (3 maanden, stop-loss $0.01)...")
     print()
 
     try:
-        data = fetch_data(SYMBOLS_TO_TEST, months=3)
+        data = fetch_data(SYMBOL_POOL, months=3)
     except Exception as e:
         print(f"Fout: {e}")
         return
 
     results = []
-    for symbol in SYMBOLS_TO_TEST:
+    for symbol in SYMBOL_POOL:
         if symbol not in data or data[symbol].empty or len(data[symbol]) < 20:
             continue
         res = run_backtest(data[symbol], symbol, CAPITAL_PER_ASSET, STOP_LOSS_PER_UNIT)
