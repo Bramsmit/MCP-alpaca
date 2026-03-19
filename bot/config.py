@@ -34,6 +34,9 @@ STOP_LOSS_PER_UNIT = 0.01
 # Plaats NOOIT limit sell + stop-loss tegelijk - 2e order faalt met "available: 0".
 ALPACA_CRYPTO_SINGLE_EXIT_ORDER = True
 
+# Na cancel: wacht even voordat nieuwe order geplaatst wordt (balance moet vrijkomen)
+ORDER_REPLACE_DELAY_SEC = 3
+
 # Dynamische order updates: herplaats order als prijs meer dan dit percentage afwijkt
 ORDER_UPDATE_THRESHOLD = 0.01  # 1%
 

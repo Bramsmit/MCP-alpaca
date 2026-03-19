@@ -43,6 +43,7 @@ from bot.config import (
     ORDER_MAX_AGE_HOURS,
     ORDER_STALE_PRICE_THRESHOLD,
     ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
+    ORDER_REPLACE_DELAY_SEC,
 )
 from bot.telegram import send_telegram, notify_trade, notify_trade_filled
 
@@ -429,27 +430,45 @@ def run_once():
                     needs_new_sell = False
 
             if needs_new_sell:
-                try:
-                    # ALPACA CRYPTO LIMITATIE: slechts 1 exit order per positie (ALPACA_CRYPTO_SINGLE_EXIT_ORDER).
-                    # Plaats NOOIT een 2e sell order (bijv. stop-loss) - faalt met "insufficient balance, available: 0".
-                    assert ALPACA_CRYPTO_SINGLE_EXIT_ORDER, "Alpaca crypto: max 1 exit order per positie"
+                def _place_sell():
+                    qty_sell = round(float(qty), 6)  # Alpaca crypto qty precision
                     trading_client.submit_order(
                         LimitOrderRequest(
                             symbol=symbol,
-                            qty=qty,
+                            qty=qty_sell,
                             side=OrderSide.SELL,
                             type=OrderType.LIMIT,
                             time_in_force=TimeInForce.GTC,
                             limit_price=_round_price(limit_sell),
                         )
                     )
+                try:
+                    # Na cancel: wacht tot balance vrijkomt (Alpaca heeft vertraging)
+                    if existing_sell and ORDER_REPLACE_DELAY_SEC > 0:
+                        time.sleep(ORDER_REPLACE_DELAY_SEC)
+                    assert ALPACA_CRYPTO_SINGLE_EXIT_ORDER, "Alpaca crypto: max 1 exit order per positie"
+                    _place_sell()
                     log.info("  %s: Sell limit @ $%.4f (stop @ $%.4f niet geplaatst - crypto 1 order/positie)", symbol, limit_sell, stop_price)
                     if not existing_sell:
                         send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
                         stats["placed"] += 1
                 except Exception as e:
-                    log.warning("  %s: Fout: %s", symbol, e)
-                    send_telegram(f"❌ {symbol}: Fout orders: {e}")
+                    err_str = str(e)
+                    if "insufficient balance" in err_str.lower() or "40310000" in err_str:
+                        log.info("  %s: Retry na insufficient balance...", symbol)
+                        time.sleep(ORDER_REPLACE_DELAY_SEC + 2)
+                        try:
+                            _place_sell()
+                            log.info("  %s: Sell limit @ $%.4f (retry ok)", symbol, limit_sell)
+                            if not existing_sell:
+                                send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
+                                stats["placed"] += 1
+                        except Exception as e2:
+                            log.warning("  %s: Fout (retry): %s", symbol, e2)
+                            send_telegram(f"❌ {symbol}: Fout orders: {e2}")
+                    else:
+                        log.warning("  %s: Fout: %s", symbol, e)
+                        send_telegram(f"❌ {symbol}: Fout orders: {e}")
         else:
             # Geen positie: plaats of update limit buy order
             if capital_per <= 1:
@@ -505,6 +524,9 @@ def run_once():
                         needs_new_order = False
 
                 if needs_new_order:
+                    # Na cancel: wacht tot balance vrijkomt
+                    if existing_buy and ORDER_REPLACE_DELAY_SEC > 0:
+                        time.sleep(ORDER_REPLACE_DELAY_SEC)
                     qty = capital_per / buy_level
                     limit_px = _round_price(buy_level)
                     try:
