@@ -7,6 +7,7 @@ Draait 1x per dag of via cron. Plaatst limit buy/sell en stop-loss orders.
 import logging
 import os
 import time
+from decimal import Decimal, ROUND_DOWN
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -200,6 +201,14 @@ def _norm_symbol(s: str) -> str:
     return f"{s}/USD"
 
 
+def _position_qty_float(p) -> float:
+    """Qty als float; Alpaca geeft soms string (exacte precisie)."""
+    q = p.qty
+    if isinstance(q, str):
+        return float(Decimal(q))
+    return float(q or 0)
+
+
 def get_positions(trading_client, symbols: list[str] | None = None) -> dict[str, tuple[float, float]]:
     """Posities per symbol: {symbol: (qty, avg_entry_price)}. Filter op symbols indien gegeven."""
     positions = trading_client.get_all_positions()
@@ -207,8 +216,50 @@ def get_positions(trading_client, symbols: list[str] | None = None) -> dict[str,
     for p in positions:
         sym = _norm_symbol(p.symbol)
         if symbols is None or sym in symbols:
-            out[sym] = (float(p.qty), float(p.avg_entry_price or 0))
+            out[sym] = (_position_qty_float(p), float(p.avg_entry_price or 0))
     return out
+
+
+# Onder deze hoeveelheid crypto: geen sell (dust / afronding-ruis)
+MIN_SELLABLE_CRYPTO_QTY = 1e-5
+
+
+def _normalize_crypto_sell_qty(qty_raw) -> float:
+    """
+    Qty voor sell order: nooit afronden omhoog (Alpaca: requested > available).
+    Gebruik Decimal + ROUND_DOWN op max 8 decimalen.
+    """
+    if qty_raw is None:
+        return 0.0
+    try:
+        d = Decimal(str(qty_raw))
+    except Exception:
+        d = Decimal(str(float(qty_raw)))
+    if d <= 0:
+        return 0.0
+    q = d.quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
+    out = float(q)
+    if out <= 0 and d > 0:
+        # Zeldzaam: dust kleiner dan 1e-8
+        out = float(d.quantize(Decimal("0.0000000001"), rounding=ROUND_DOWN))
+    return out if out > 0 else 0.0
+
+
+def _submit_crypto_sell(trading_client, symbol: str, qty: float, limit_sell: float) -> None:
+    """Plaats één limit sell; qty moet > 0."""
+    qty_sell = _normalize_crypto_sell_qty(qty)
+    if qty_sell <= 0:
+        raise ValueError(f"qty must be > 0 (input={qty!r})")
+    trading_client.submit_order(
+        LimitOrderRequest(
+            symbol=symbol,
+            qty=qty_sell,
+            side=OrderSide.SELL,
+            type=OrderType.LIMIT,
+            time_in_force=TimeInForce.GTC,
+            limit_price=_round_price(limit_sell),
+        )
+    )
 
 
 def get_open_orders(trading_client, symbol: str = None) -> list:
@@ -372,6 +423,17 @@ def run_once():
                     except Exception:
                         pass
 
+        if pos_qty > 0 and pos_qty < MIN_SELLABLE_CRYPTO_QTY:
+            # Dust: annuleer sell orders, geen nieuwe plaatsen (voorkomt qty must be > 0 / insufficient balance)
+            for o in open_orders:
+                if o.side == OrderSide.SELL:
+                    try:
+                        trading_client.cancel_order_by_id(o.id)
+                        log.info("  %s: Dust positie (qty=%s), sell order geannuleerd", symbol, pos_qty)
+                    except Exception:
+                        pass
+            continue
+
         if pos_qty > 0:
             # We hebben positie: zorg voor sell + stop-loss, update als prijs bewogen is
             existing_sell = next((o for o in open_orders if o.side == OrderSide.SELL and o.order_type == OrderType.LIMIT), None)
@@ -379,7 +441,6 @@ def run_once():
             entry = avg_entry if avg_entry > 0 else buy_level
             stop_price = entry - STOP_LOSS_PER_UNIT
             limit_sell = sell_level
-            qty = pos_qty
 
             needs_new_sell = True
 
@@ -430,41 +491,66 @@ def run_once():
                     needs_new_sell = False
 
             if needs_new_sell:
-                def _place_sell():
-                    qty_sell = round(float(qty), 6)  # Alpaca crypto qty precision
-                    trading_client.submit_order(
-                        LimitOrderRequest(
-                            symbol=symbol,
-                            qty=qty_sell,
-                            side=OrderSide.SELL,
-                            type=OrderType.LIMIT,
-                            time_in_force=TimeInForce.GTC,
-                            limit_price=_round_price(limit_sell),
-                        )
-                    )
                 try:
                     # Na cancel: wacht tot balance vrijkomt (Alpaca heeft vertraging)
                     if existing_sell and ORDER_REPLACE_DELAY_SEC > 0:
                         time.sleep(ORDER_REPLACE_DELAY_SEC)
                     assert ALPACA_CRYPTO_SINGLE_EXIT_ORDER, "Alpaca crypto: max 1 exit order per positie"
-                    _place_sell()
-                    log.info("  %s: Sell limit @ $%.4f (stop @ $%.4f niet geplaatst - crypto 1 order/positie)", symbol, limit_sell, stop_price)
-                    if not existing_sell:
-                        send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
-                        stats["placed"] += 1
+                    # Positie opnieuw ophalen (stale qty / closure-bug voorkomen)
+                    fresh = get_positions(trading_client, symbols=[symbol])
+                    qty_live, _ = fresh.get(symbol, (0.0, 0.0))
+                    if qty_live <= 0:
+                        log.warning(
+                            "  %s: Geen sell geplaatst: positie qty=%s (na cancel / sync)",
+                            symbol,
+                            qty_live,
+                        )
+                    else:
+                        _submit_crypto_sell(trading_client, symbol, qty_live, limit_sell)
+                        log.info(
+                            "  %s: Sell limit @ $%.4f (stop @ $%.4f niet geplaatst - crypto 1 order/positie)",
+                            symbol,
+                            limit_sell,
+                            stop_price,
+                        )
+                        if not existing_sell:
+                            send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
+                            stats["placed"] += 1
                 except Exception as e:
                     err_str = str(e)
                     if "insufficient balance" in err_str.lower() or "40310000" in err_str:
                         log.info("  %s: Retry na insufficient balance...", symbol)
                         time.sleep(ORDER_REPLACE_DELAY_SEC + 2)
+                        fresh = get_positions(trading_client, symbols=[symbol])
+                        qty_live, _ = fresh.get(symbol, (0.0, 0.0))
                         try:
-                            _place_sell()
-                            log.info("  %s: Sell limit @ $%.4f (retry ok)", symbol, limit_sell)
-                            if not existing_sell:
-                                send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
-                                stats["placed"] += 1
+                            if qty_live > 0:
+                                _submit_crypto_sell(trading_client, symbol, qty_live, limit_sell)
+                                log.info("  %s: Sell limit @ $%.4f (retry ok)", symbol, limit_sell)
+                                if not existing_sell:
+                                    send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
+                                    stats["placed"] += 1
+                            else:
+                                log.warning("  %s: Geen positie na balance-retry (qty=%s)", symbol, qty_live)
                         except Exception as e2:
                             log.warning("  %s: Fout (retry): %s", symbol, e2)
+                            send_telegram(f"❌ {symbol}: Fout orders: {e2}")
+                    elif "40010001" in err_str or "qty must be" in err_str.lower():
+                        log.info("  %s: Retry na qty-fout, positie opnieuw ophalen...", symbol)
+                        time.sleep(ORDER_REPLACE_DELAY_SEC + 2)
+                        fresh = get_positions(trading_client, symbols=[symbol])
+                        qty_live, _ = fresh.get(symbol, (0.0, 0.0))
+                        try:
+                            if qty_live > 0:
+                                _submit_crypto_sell(trading_client, symbol, qty_live, limit_sell)
+                                log.info("  %s: Sell limit @ $%.4f (retry na qty)", symbol, limit_sell)
+                                if not existing_sell:
+                                    send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
+                                    stats["placed"] += 1
+                            else:
+                                log.warning("  %s: Geen positie na qty-retry", symbol)
+                        except Exception as e2:
+                            log.warning("  %s: Fout (qty retry): %s", symbol, e2)
                             send_telegram(f"❌ {symbol}: Fout orders: {e2}")
                     else:
                         log.warning("  %s: Fout: %s", symbol, e)
