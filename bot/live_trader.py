@@ -5,10 +5,9 @@ Draait 1x per dag of via cron. Plaatst limit buy/sell en stop-loss orders.
 """
 
 import logging
-import math
 import os
 import time
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -233,45 +232,62 @@ def _find_position(trading_client, symbol: str):
     return None
 
 
-def _sell_qty_decimal_from_position(p) -> Decimal:
-    """
-    Exacte sell-qty uit Position. Gebruik NOOIT round() op floats:
-    round(146.189048008, 8) == 146.18904801 -> insufficient balance bij Alpaca.
-    """
-    if p is None:
-        return Decimal(0)
-    raw = p.model_dump(mode="json").get("qty")
-    if raw is None:
-        return Decimal(0)
+def _decimal_from_json_qty(raw) -> Decimal | None:
+    """Parse qty uit Alpaca JSON (meestal string, exact). Geen round() op floats."""
+    if raw is None or raw == "":
+        return None
     if isinstance(raw, str):
-        return Decimal(raw)
+        try:
+            return Decimal(raw)
+        except Exception:
+            return None
     if isinstance(raw, int):
         return Decimal(raw)
     if isinstance(raw, float):
         return Decimal(repr(raw))
-    return Decimal(str(raw))
+    try:
+        return Decimal(str(raw))
+    except Exception:
+        return None
+
+
+def _sell_qty_decimal_from_position(p) -> Decimal:
+    """
+    Hoeveelheid die we mogen verkopen volgens Alpaca.
+
+    Primair: qty_available (niet gelocked in open orders) — zelfde als 'available' in API-fouten.
+    Fallback: qty als qty_available ontbreekt (oude clients / edge cases).
+
+    Let op: na cancel van een sell-order even wachten + positie verversen, anders kan
+    qty_available nog 0 zijn.
+    """
+    if p is None:
+        return Decimal(0)
+    data = p.model_dump(mode="json")
+
+    raw_avail = data.get("qty_available")
+    if raw_avail is not None and raw_avail != "":
+        d_avail = _decimal_from_json_qty(raw_avail)
+        if d_avail is not None:
+            if d_avail > 0:
+                return d_avail
+            # Expliciet 0: niets vrij te verkopen (o.a. nog gelocked)
+            return Decimal(0)
+
+    raw_qty = data.get("qty")
+    d_qty = _decimal_from_json_qty(raw_qty)
+    return d_qty if d_qty is not None and d_qty > 0 else Decimal(0)
 
 
 def _decimal_to_submit_sell_qty(d: Decimal) -> float:
-    """
-    Decimal -> float voor LimitOrderRequest. Afronden naar beneden tot 9 decimalen,
-    daarna math.nextafter richting 0 zodat JSON/float nooit boven Alpaca 'available' uitkomt.
-    """
+    """Decimal -> float voor LimitOrderRequest (qty komt uit Alpaca-strings, geen round()-bugs)."""
     if d <= 0:
         return 0.0
-    q = d.quantize(Decimal("1E-9"), rounding=ROUND_DOWN)
-    if q <= 0:
-        q = d.quantize(Decimal("1E-12"), rounding=ROUND_DOWN)
-    if q <= 0:
-        return 0.0
-    f = float(q)
-    if f <= 0:
-        return 0.0
-    return math.nextafter(f, 0.0)
+    return float(d)
 
 
 def _submit_crypto_sell(trading_client, symbol: str, position, limit_sell: float) -> None:
-    """Plaats één limit sell op basis van Position (exacte qty)."""
+    """Plaats één limit sell; qty = Alpaca qty_available (of qty fallback)."""
     d = _sell_qty_decimal_from_position(position)
     qty_sell = _decimal_to_submit_sell_qty(d)
     if qty_sell <= 0:
