@@ -47,6 +47,7 @@ from bot.config import (
     ORDER_REPLACE_DELAY_SEC,
 )
 from bot.telegram import send_telegram, notify_trade, notify_trade_filled
+from bot.journal import log_trade
 
 
 def get_trading_clients():
@@ -401,12 +402,24 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
                 continue
             side = "buy" if o.side == OrderSide.BUY else "sell"
             profit = None
+            entry_price_for_log = None
             if side == "sell" and sym in entries:
                 entry = entries[sym].get("entry", 0)
+                entry_price_for_log = entry if entry else None
                 if entry:
                     profit = (price - entry) * qty
                 del entries[sym]
             notify_trade_filled(side, sym, qty, price, profit, portfolio_value)
+            log_trade(
+                order_id=oid,
+                symbol=sym,
+                side=side,
+                qty=qty,
+                price=price,
+                entry_price=entry_price_for_log,
+                profit=profit,
+                portfolio_value=portfolio_value,
+            )
             new_notified.append(oid)
 
         if new_notified:

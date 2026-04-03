@@ -11,7 +11,9 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: .alpaca_trade_state.json
+          path: |
+            .alpaca_trade_state.json
+            trades.jsonl
           key: alpaca-trade-state-${{ runner.os }}
 
       - uses: actions/setup-python@v5

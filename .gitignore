@@ -4,6 +4,7 @@ dist
 .env
 .cursor/mcp.json
 .alpaca_trade_state.json
+trades.jsonl
 __pycache__
 *.pyc
 alpaca-server/
