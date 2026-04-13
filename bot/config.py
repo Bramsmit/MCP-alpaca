@@ -16,7 +16,7 @@ SYMBOLS_ACTIVE = 3
 SYMBOLS = SYMBOL_POOL[:SYMBOLS_ACTIVE]
 
 # Kapitaal
-START_CAPITAL = 1000
+START_CAPITAL = 500
 CAPITAL_PER_ASSET = START_CAPITAL / SYMBOLS_ACTIVE  # verdeel over actieve symbolen
 
 # Range niveaus (rolling 24h met daily bars)

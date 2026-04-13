@@ -51,13 +51,16 @@ from bot.journal import log_trade
 
 
 def get_trading_clients():
-    """Maak Alpaca clients (paper trading)."""
+    """Maak Alpaca clients. Paper mode via ALPACA_PAPER_TRADE env var (default True)."""
     api_key = os.environ.get("ALPACA_API_KEY", "").strip()
     secret = os.environ.get("ALPACA_SECRET_KEY", "").strip()
     if not api_key or not secret:
         raise ValueError("ALPACA_API_KEY en ALPACA_SECRET_KEY vereist in .env")
+    paper = os.environ.get("ALPACA_PAPER_TRADE", "True").strip().lower() not in ("false", "0", "no")
+    if not paper:
+        log.warning("⚠️  LIVE TRADING — ALPACA_PAPER_TRADE=False")
     return (
-        TradingClient(api_key, secret, paper=True),
+        TradingClient(api_key, secret, paper=paper),
         CryptoHistoricalDataClient(api_key, secret),
     )
 
@@ -378,7 +381,7 @@ def _save_state(entries: dict | None = None, notified_ids: list[str] | None = No
 def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
     """Check gevulde orders sinds vorige run, stuur Telegram notificatie. Retourneert aantal nieuwe trades."""
     try:
-        after = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        after = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
         req = GetOrdersRequest(status=QueryOrderStatus.CLOSED, after=after)
         orders = trading_client.get_orders(req)
         portfolio_value = get_portfolio_value(trading_client)
@@ -449,7 +452,7 @@ def run_once():
     positions = get_positions(trading_client, symbols=symbols)
     buying_power = get_buying_power(trading_client)
 
-    capital_per = min(CAPITAL_PER_ASSET, buying_power / len(symbols))
+    capital_per = buying_power / len(symbols)
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
