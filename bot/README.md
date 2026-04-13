@@ -6,6 +6,11 @@
 python -m bot.backtest
 ```
 
+## Context voor v2 / Cursor (architectuur + trade-handoff)
+
+- Overzicht: [docs/CODEBASE_CONTEXT_FOR_V2.md](../docs/CODEBASE_CONTEXT_FOR_V2.md)
+- Export (JSON + MD, geen API keys): `python -m bot.export_handoff` → bestanden in `exports/`
+
 ## Live Paper Trading
 
 ```bash
