@@ -613,9 +613,9 @@ def run_once():
                         send_telegram(f"❌ {symbol}: Fout orders: {e}")
         else:
             # Geen positie: plaats of update limit buy order
-            if capital_per <= 1:
-                log.info("  %s: Te weinig kapitaal ($%.2f), skip", symbol, capital_per)
-                stats["skipped"] += 1
+                if capital_per < 10:
+                    log.info("  %s: Te weinig kapitaal ($%.2f, min $10), skip", symbol, capital_per)
+                    stats["skipped"] += 1
             elif buy_level < 0.0001:
                 # Alpaca: "limit price must be > 0" voor zeer lage prijzen (SHIB ~5e-6, PEPE)
                 log.info("  %s: Prijs $%.8f te laag - Alpaca API accepteert dit niet", symbol, float(buy_level))
