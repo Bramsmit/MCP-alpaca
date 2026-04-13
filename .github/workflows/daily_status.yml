@@ -1,16 +1,14 @@
-name: Trading Bot v2 — Heartbeat
-
+name: Daily Status
 on:
   schedule:
-    - cron: '0 9 * * *'   # Dagelijks 9:00 UTC (11:00 Amsterdam zomer)
+    - cron: '0 9 * * *'   # Elke dag om 9:00 UTC (10:00/11:00 NL)
   workflow_dispatch:       # Handmatig testen
-
 jobs:
   status:
     runs-on: ubuntu-latest
     steps:
-      - name: Stuur heartbeat
+      - name: Stuur dagelijkse heartbeat
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.ALPACA_V2_TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.ALPACA_V2_TELEGRAM_CHAT_ID }}" \
-            -d "text=✅ Trading Bot v2: actief. Volgende run over ~60 min."
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=✅ Trading bot: nog actief. Laatste dagelijkse check OK."
