@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Annuleer alle open orders op Alpaca paper account."""
+"""Annuleer alle open orders op het Alpaca account (paper of live, via .env)."""
 
 import os
 from pathlib import Path
@@ -20,7 +20,10 @@ from alpaca.trading.enums import QueryOrderStatus
 def main():
     api_key = os.environ.get("ALPACA_API_KEY", "")
     secret = os.environ.get("ALPACA_SECRET_KEY", "")
-    client = TradingClient(api_key, secret, paper=True)
+    paper = os.environ.get("ALPACA_PAPER_TRADE", "True").strip().lower() not in ("false", "0", "no")
+    mode = "PAPER" if paper else "LIVE"
+    print(f"⚠️  Modus: {mode} — account: {api_key[:8]}...")
+    client = TradingClient(api_key, secret, paper=paper)
 
     result = client.get_orders(GetOrdersRequest(status=QueryOrderStatus.OPEN))
     orders = result if isinstance(result, list) else result.get("orders", [])
