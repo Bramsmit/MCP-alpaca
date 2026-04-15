@@ -49,12 +49,12 @@ def send_daily_report(exchange=None) -> None:
         arrow = "📈" if diff >= 0 else "📉"
         msg = (
             f"{arrow} Dagrapport {date_str}\n"
-            f"Start:  ${start_value:.2f}\n"
-            f"Nu:     ${value:.2f}\n"
-            f"Winst:  ${diff:+.2f} ({pct:+.1f}%)"
+            f"Start:  €{start_value:.2f}\n"
+            f"Nu:     €{value:.2f}\n"
+            f"Winst:  €{diff:+.2f} ({pct:+.1f}%)"
         )
     else:
-        msg = f"📊 Dagrapport {date_str}\nPortfolio: ${value:.2f}"
+        msg = f"📊 Dagrapport {date_str}\nPortfolio: €{value:.2f}"
 
     send_telegram(msg)
     save_day_start(value)

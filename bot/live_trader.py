@@ -433,8 +433,9 @@ def run_once():
                         if not dry_run:
                             exchange.cancel_order(existing_sell["id"], symbol)
                         pct = (limit_sell - current_price) / limit_sell * 100
-                        log.info("  %s: Sell vervangen (prijs %.1f%% onder target)", symbol, pct)
-                        send_telegram(f"🔄 {symbol}: Sell vervangen, prijs {pct:.1f}% onder target, nieuwe @ €{limit_sell:.4f}")
+                        tag = " [DRY RUN]" if dry_run else ""
+                        log.info("  %s: Sell vervangen (prijs %.1f%% onder target)%s", symbol, pct, tag)
+                        send_telegram(f"🔄 {symbol}: Sell vervangen, prijs {pct:.1f}% onder target, nieuwe @ €{limit_sell:.4f}{tag}")
                         stats["updated"] += 1
                     except Exception as e:
                         log.warning("  %s: Fout annuleren sell: %s", symbol, e)
@@ -443,8 +444,9 @@ def run_once():
                     try:
                         if not dry_run:
                             exchange.cancel_order(existing_sell["id"], symbol)
-                        log.info("  %s: Sell vervangen na %.0fh", symbol, age_hours)
-                        send_telegram(f"🔄 {symbol}: Sell vervangen na {age_hours:.0f}h, nieuwe @ €{limit_sell:.4f}")
+                        tag = " [DRY RUN]" if dry_run else ""
+                        log.info("  %s: Sell vervangen na %.0fh%s", symbol, age_hours, tag)
+                        send_telegram(f"🔄 {symbol}: Sell vervangen na {age_hours:.0f}h, nieuwe @ €{limit_sell:.4f}{tag}")
                         stats["updated"] += 1
                     except Exception as e:
                         log.warning("  %s: Fout annuleren sell: %s", symbol, e)
@@ -453,8 +455,9 @@ def run_once():
                     try:
                         if not dry_run:
                             exchange.cancel_order(existing_sell["id"], symbol)
-                        log.info("  %s: Sell bijgewerkt (%.4f → %.4f)", symbol, old_sell_price, limit_sell)
-                        send_telegram(f"🔄 {symbol}: Sell bijgewerkt @ €{limit_sell:.4f} (was €{old_sell_price:.4f})")
+                        tag = " [DRY RUN]" if dry_run else ""
+                        log.info("  %s: Sell bijgewerkt (%.4f → %.4f)%s", symbol, old_sell_price, limit_sell, tag)
+                        send_telegram(f"🔄 {symbol}: Sell bijgewerkt @ €{limit_sell:.4f} (was €{old_sell_price:.4f}){tag}")
                         stats["updated"] += 1
                     except Exception as e:
                         log.warning("  %s: Fout annuleren sell: %s", symbol, e)
@@ -507,8 +510,9 @@ def run_once():
                             if not dry_run:
                                 exchange.cancel_order(existing_buy["id"], symbol)
                             pct = (current_price - old_price) / old_price * 100
-                            log.info("  %s: Buy vervangen (prijs %.1f%% boven order)", symbol, pct)
-                            send_telegram(f"🔄 {symbol}: Buy vervangen, prijs {pct:.1f}% boven order, nieuwe @ €{buy_level:.4f}")
+                            tag = " [DRY RUN]" if dry_run else ""
+                            log.info("  %s: Buy vervangen (prijs %.1f%% boven order)%s", symbol, pct, tag)
+                            send_telegram(f"🔄 {symbol}: Buy vervangen, prijs {pct:.1f}% boven order, nieuwe @ €{buy_level:.4f}{tag}")
                             stats["updated"] += 1
                         except Exception as e:
                             log.warning("  %s: Fout annuleren buy: %s", symbol, e)
@@ -517,8 +521,9 @@ def run_once():
                         try:
                             if not dry_run:
                                 exchange.cancel_order(existing_buy["id"], symbol)
-                            log.info("  %s: Buy vervangen na %.0fh", symbol, age_hours)
-                            send_telegram(f"🔄 {symbol}: Buy vervangen na {age_hours:.0f}h, nieuwe @ €{buy_level:.4f}")
+                            tag = " [DRY RUN]" if dry_run else ""
+                            log.info("  %s: Buy vervangen na %.0fh%s", symbol, age_hours, tag)
+                            send_telegram(f"🔄 {symbol}: Buy vervangen na {age_hours:.0f}h, nieuwe @ €{buy_level:.4f}{tag}")
                             stats["updated"] += 1
                         except Exception as e:
                             log.warning("  %s: Fout annuleren buy: %s", symbol, e)
@@ -527,8 +532,9 @@ def run_once():
                         try:
                             if not dry_run:
                                 exchange.cancel_order(existing_buy["id"], symbol)
-                            log.info("  %s: Buy bijgewerkt (%.4f → %.4f)", symbol, old_price, buy_level)
-                            send_telegram(f"🔄 {symbol}: Buy bijgewerkt @ €{buy_level:.4f} (was €{old_price:.4f})")
+                            tag = " [DRY RUN]" if dry_run else ""
+                            log.info("  %s: Buy bijgewerkt (%.4f → %.4f)%s", symbol, old_price, buy_level, tag)
+                            send_telegram(f"🔄 {symbol}: Buy bijgewerkt @ €{buy_level:.4f} (was €{old_price:.4f}){tag}")
                             stats["updated"] += 1
                         except Exception as e:
                             log.warning("  %s: Fout annuleren buy: %s", symbol, e)
