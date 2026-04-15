@@ -72,9 +72,15 @@ def get_balance(exchange) -> float:
 
 
 def get_portfolio_value(exchange) -> float:
-    """Totale portfoliowaarde in EUR (cash + crypto posities)."""
+    """
+    Portfoliowaarde van het bot-gedeelte in EUR (max MAX_CAPITAL_EUR).
+    = waarde crypto posities (SYMBOL_POOL) + EUR in open buy orders + resterende vrije EUR (gemaximeerd).
+    Toont NIET de rest van het Kraken account.
+    """
     b = exchange.fetch_balance()
-    total = float(b.get("EUR", {}).get("total", 0) or 0)
+
+    # Waarde van crypto posities in SYMBOL_POOL
+    crypto_value = 0.0
     for symbol in SYMBOL_POOL:
         base = symbol.split("/")[0]
         qty = float(b.get(base, {}).get("total", 0) or 0)
@@ -82,10 +88,29 @@ def get_portfolio_value(exchange) -> float:
             try:
                 ticker = exchange.fetch_ticker(symbol)
                 price = float(ticker.get("last") or 0)
-                total += qty * price
+                crypto_value += qty * price
             except Exception:
                 pass
-    return total
+
+    # EUR gelocked in open buy orders (bot-geplaatst)
+    eur_in_orders = 0.0
+    try:
+        for symbol in SYMBOL_POOL:
+            orders = exchange.fetch_open_orders(symbol)
+            for o in orders:
+                if o.get("side") == "buy":
+                    amount = float(o.get("amount") or 0)
+                    price = float(o.get("price") or 0)
+                    eur_in_orders += amount * price
+    except Exception:
+        pass
+
+    # Vrije EUR, gemaximeerd op MAX_CAPITAL_EUR minus al ingezet kapitaal
+    free_eur = float(b.get("EUR", {}).get("free", 0) or 0)
+    deployed = crypto_value + eur_in_orders
+    free_eur_for_bot = min(free_eur, max(0.0, MAX_CAPITAL_EUR - deployed))
+
+    return crypto_value + eur_in_orders + free_eur_for_bot
 
 
 def get_current_prices(exchange, symbols: list[str]) -> dict[str, float]:
