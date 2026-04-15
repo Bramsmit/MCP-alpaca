@@ -1,0 +1,16 @@
+name: Trading Bot Bitvavo — Heartbeat
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # Dagelijks 9:00 UTC (11:00 Amsterdam zomer)
+  workflow_dispatch:       # Handmatig testen
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stuur heartbeat Bitvavo
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BITVAVO_TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}" \
+            -d "text=✅ Trading Bot Bitvavo: actief. Volgende run over ~60 min."

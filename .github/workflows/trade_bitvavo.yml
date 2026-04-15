@@ -1,0 +1,47 @@
+name: Trading Bot Bitvavo — Hourly
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # Elk uur op het hele uur
+  workflow_dispatch:       # Handmatig starten via GitHub UI
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Herstel state (orders + trades)
+        uses: actions/cache@v4
+        with:
+          path: |
+            .alpaca_trade_state.json
+            trades.jsonl
+            .alpaca_day_state.json
+          key: bitvavo-state-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            bitvavo-state-${{ runner.os }}-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installeer dependencies
+        run: pip install -r bot/requirements.txt
+
+      - name: Draai trading bot Bitvavo
+        id: trade
+        env:
+          BITVAVO_API_KEY: ${{ secrets.BITVAVO_API_KEY }}
+          BITVAVO_SECRET_KEY: ${{ secrets.BITVAVO_SECRET_KEY }}
+          BITVAVO_DRY_RUN: ${{ secrets.BITVAVO_DRY_RUN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.BITVAVO_TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}
+        run: python -m bot.live_trader
+
+      - name: Melding bij fout
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BITVAVO_TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}" \
+            -d "text=❌ Trading Bot Bitvavo heeft gefaald. Check GitHub Actions voor details."

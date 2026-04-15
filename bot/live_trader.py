@@ -48,15 +48,15 @@ MIN_SELLABLE_QTY = 1e-6
 
 
 def get_exchange():
-    """Maak Kraken ccxt exchange. DRY_RUN=True logt orders maar plaatst ze niet."""
-    api_key = os.environ.get("KRAKEN_API_KEY", "").strip()
-    secret = os.environ.get("KRAKEN_SECRET_KEY", "").strip()
+    """Maak Bitvavo ccxt exchange. DRY_RUN=True logt orders maar plaatst ze niet."""
+    api_key = os.environ.get("BITVAVO_API_KEY", "").strip()
+    secret = os.environ.get("BITVAVO_SECRET_KEY", "").strip()
     if not api_key or not secret:
-        raise ValueError("KRAKEN_API_KEY en KRAKEN_SECRET_KEY vereist in .env")
-    dry_run = os.environ.get("KRAKEN_DRY_RUN", "False").strip().lower() in ("true", "1", "yes")
+        raise ValueError("BITVAVO_API_KEY en BITVAVO_SECRET_KEY vereist in .env")
+    dry_run = os.environ.get("BITVAVO_DRY_RUN", "True").strip().lower() in ("true", "1", "yes")
     if dry_run:
         log.warning("⚠️  DRY RUN — geen echte orders worden geplaatst")
-    exchange = ccxt.kraken({
+    exchange = ccxt.bitvavo({
         "apiKey": api_key,
         "secret": secret,
         "enableRateLimit": True,
@@ -604,7 +604,7 @@ def run_once():
 
 def main():
     log.info("=" * 50)
-    log.info("Kraken Range Trader")
+    log.info("Bitvavo Range Trader")
     log.info("=" * 50)
     log.info("Pool: %s (top %d actief)", ", ".join(SYMBOL_POOL), SYMBOLS_ACTIVE)
     log.info("Max kapitaal: €%.0f", MAX_CAPITAL_EUR)
