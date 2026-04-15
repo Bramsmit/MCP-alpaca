@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Annuleer alle open orders op het Alpaca account (paper of live, via .env)."""
+"""Annuleer alle open orders op Kraken (via .env credentials)."""
 
 import os
 from pathlib import Path
@@ -13,29 +13,44 @@ if env_path.exists():
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import GetOrdersRequest
-from alpaca.trading.enums import QueryOrderStatus
+import ccxt
+
+from bot.config import SYMBOL_POOL
+
 
 def main():
-    api_key = os.environ.get("ALPACA_API_KEY", "")
-    secret = os.environ.get("ALPACA_SECRET_KEY", "")
-    paper = os.environ.get("ALPACA_PAPER_TRADE", "True").strip().lower() not in ("false", "0", "no")
-    mode = "PAPER" if paper else "LIVE"
-    print(f"⚠️  Modus: {mode} — account: {api_key[:8]}...")
-    client = TradingClient(api_key, secret, paper=paper)
+    api_key = os.environ.get("KRAKEN_API_KEY", "")
+    secret = os.environ.get("KRAKEN_SECRET_KEY", "")
+    if not api_key or not secret:
+        print("❌ KRAKEN_API_KEY en KRAKEN_SECRET_KEY vereist in .env")
+        return
 
-    result = client.get_orders(GetOrdersRequest(status=QueryOrderStatus.OPEN))
-    orders = result if isinstance(result, list) else result.get("orders", [])
+    exchange = ccxt.kraken({
+        "apiKey": api_key,
+        "secret": secret,
+        "enableRateLimit": True,
+    })
+    exchange.load_markets()
 
-    print(f"Gevonden: {len(orders)} open orders")
-    for o in orders:
+    print(f"⚠️  Kraken account: {api_key[:8]}...")
+    print("Open orders ophalen...")
+
+    total_cancelled = 0
+    for symbol in SYMBOL_POOL:
         try:
-            client.cancel_order_by_id(o.id)
-            print(f"  Geannuleerd: {o.symbol} {o.side} {o.id}")
+            orders = exchange.fetch_open_orders(symbol)
+            for o in orders:
+                try:
+                    exchange.cancel_order(o["id"], symbol)
+                    print(f"  Geannuleerd: {symbol} {o.get('side','?')} @ {o.get('price','?')} (id={o['id'][:8]})")
+                    total_cancelled += 1
+                except Exception as e:
+                    print(f"  Fout bij annuleren {o['id']}: {e}")
         except Exception as e:
-            print(f"  Fout {o.id}: {e}")
-    print("Klaar.")
+            print(f"  Fout bij ophalen orders {symbol}: {e}")
+
+    print(f"\nKlaar. {total_cancelled} order(s) geannuleerd.")
+
 
 if __name__ == "__main__":
     main()

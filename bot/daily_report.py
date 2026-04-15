@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Dagelijks rapport: stuur portfoliowaarde + winst/verlies naar Telegram.
-Draait via GitHub Actions om 8:00 UTC, of automatisch vanuit run_loop om 22:00.
+Draait via GitHub Actions om 20:00 UTC, of automatisch vanuit run_loop om 22:00.
 """
 
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bot.live_trader import get_trading_clients, get_portfolio_value
+from bot.live_trader import get_exchange, get_portfolio_value
 from bot.telegram import send_telegram
 
 _DAY_STATE_PATH = Path(__file__).resolve().parent.parent / ".alpaca_day_state.json"
@@ -32,12 +32,12 @@ def load_day_start() -> tuple[str | None, float | None]:
         return None, None
 
 
-def send_daily_report(trading_client=None) -> None:
+def send_daily_report(exchange=None) -> None:
     """Stuur eindrapport met start vs. huidige waarde en winst/verlies."""
-    if trading_client is None:
-        trading_client, _ = get_trading_clients()
+    if exchange is None:
+        exchange, _ = get_exchange()
 
-    value = get_portfolio_value(trading_client)
+    value = get_portfolio_value(exchange)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     date_str = datetime.now(timezone.utc).strftime("%d-%m-%Y")
 

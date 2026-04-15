@@ -1,0 +1,47 @@
+name: Trading Bot Kraken — Hourly
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # Elk uur op het hele uur
+  workflow_dispatch:       # Handmatig starten via GitHub UI
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Herstel state (orders + trades)
+        uses: actions/cache@v4
+        with:
+          path: |
+            .alpaca_trade_state.json
+            trades.jsonl
+            .alpaca_day_state.json
+          key: kraken-state-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            kraken-state-${{ runner.os }}-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installeer dependencies
+        run: pip install -r bot/requirements.txt
+
+      - name: Draai trading bot Kraken
+        id: trade
+        env:
+          KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
+          KRAKEN_SECRET_KEY: ${{ secrets.KRAKEN_SECRET_KEY }}
+          KRAKEN_DRY_RUN: ${{ secrets.KRAKEN_DRY_RUN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.KRAKEN_TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.KRAKEN_TELEGRAM_CHAT_ID }}
+        run: python -m bot.live_trader
+
+      - name: Melding bij fout
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.KRAKEN_TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.KRAKEN_TELEGRAM_CHAT_ID }}" \
+            -d "text=❌ Trading Bot Kraken heeft gefaald. Check GitHub Actions voor details."

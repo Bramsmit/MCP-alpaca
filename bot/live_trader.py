@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Live paper trading bot - range strategie voor AVAX, UNI, AAVE.
-Draait 1x per dag of via cron. Plaatst limit buy/sell en stop-loss orders.
+Kraken range-trading bot via ccxt.
+Plaatst limit buy/sell orders op basis van rolling 3-daags high/low.
+Draait 1x per uur via GitHub Actions.
 """
 
+import json
 import logging
 import os
 import time
-from decimal import Decimal
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -24,146 +25,157 @@ if env_path.exists():
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import LimitOrderRequest, GetOrdersRequest
-from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus, OrderStatus
-from alpaca.data.historical import CryptoHistoricalDataClient
-from alpaca.data.requests import CryptoBarsRequest, CryptoLatestQuoteRequest
-from alpaca.data.timeframe import TimeFrame
+import ccxt
 
 from bot.config import (
     SYMBOL_POOL,
     SYMBOLS_ACTIVE,
-    CAPITAL_PER_ASSET,
+    MAX_CAPITAL_EUR,
     LEVELS_LOOKBACK_DAYS,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
-    STOP_LOSS_PER_UNIT,
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
     ORDER_STALE_PRICE_THRESHOLD,
-    ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
     ORDER_REPLACE_DELAY_SEC,
 )
-from bot.telegram import send_telegram, notify_trade, notify_trade_filled
+from bot.telegram import send_telegram, notify_trade_filled
 from bot.journal import log_trade
 
+# Minimale qty om te verkopen (voorkomt dust-orders)
+MIN_SELLABLE_QTY = 1e-6
 
-def get_trading_clients():
-    """Maak Alpaca clients. Paper mode via ALPACA_PAPER_TRADE env var (default True)."""
-    api_key = os.environ.get("ALPACA_API_KEY", "").strip()
-    secret = os.environ.get("ALPACA_SECRET_KEY", "").strip()
+
+def get_exchange():
+    """Maak Kraken ccxt exchange. DRY_RUN=True logt orders maar plaatst ze niet."""
+    api_key = os.environ.get("KRAKEN_API_KEY", "").strip()
+    secret = os.environ.get("KRAKEN_SECRET_KEY", "").strip()
     if not api_key or not secret:
-        raise ValueError("ALPACA_API_KEY en ALPACA_SECRET_KEY vereist in .env")
-    paper = os.environ.get("ALPACA_PAPER_TRADE", "True").strip().lower() not in ("false", "0", "no")
-    if not paper:
-        log.warning("⚠️  LIVE TRADING — ALPACA_PAPER_TRADE=False")
-    return (
-        TradingClient(api_key, secret, paper=paper),
-        CryptoHistoricalDataClient(api_key, secret),
-    )
+        raise ValueError("KRAKEN_API_KEY en KRAKEN_SECRET_KEY vereist in .env")
+    dry_run = os.environ.get("KRAKEN_DRY_RUN", "False").strip().lower() in ("true", "1", "yes")
+    if dry_run:
+        log.warning("⚠️  DRY RUN — geen echte orders worden geplaatst")
+    exchange = ccxt.kraken({
+        "apiKey": api_key,
+        "secret": secret,
+        "enableRateLimit": True,
+    })
+    exchange.load_markets()
+    return exchange, dry_run
 
 
-def get_current_prices(data_client, symbols: list[str]) -> dict[str, float]:
-    """Huidige prijs per symbol (mid van latest quote)."""
-    try:
-        request = CryptoLatestQuoteRequest(symbol_or_symbols=symbols)
-        quotes = data_client.get_crypto_latest_quote(request)
-        result = {}
-        for symbol in symbols:
-            q = quotes.get(symbol)
-            if q:
-                ap = float(q.ask_price or 0)
-                bp = float(q.bid_price or 0)
-                if ap and bp:
-                    result[symbol] = (ap + bp) / 2
-                elif ap:
-                    result[symbol] = ap
-                elif bp:
-                    result[symbol] = bp
-        return result
-    except Exception as e:
-        log.warning("get_current_prices fout: %s", e)
-        return {}
+def get_balance(exchange) -> float:
+    """Vrij beschikbaar EUR kapitaal."""
+    b = exchange.fetch_balance()
+    return float(b.get("EUR", {}).get("free", 0) or 0)
 
 
-def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, float]]:
-    """Haal vorige dag high/low op voor buy/sell niveaus."""
-    end = datetime.now(timezone.utc)
-    start = end - timedelta(days=5)
+def get_portfolio_value(exchange) -> float:
+    """Totale portfoliowaarde in EUR (cash + crypto posities)."""
+    b = exchange.fetch_balance()
+    total = float(b.get("EUR", {}).get("total", 0) or 0)
+    for symbol in SYMBOL_POOL:
+        base = symbol.split("/")[0]
+        qty = float(b.get(base, {}).get("total", 0) or 0)
+        if qty > 0:
+            try:
+                ticker = exchange.fetch_ticker(symbol)
+                price = float(ticker.get("last") or 0)
+                total += qty * price
+            except Exception:
+                pass
+    return total
 
-    request = CryptoBarsRequest(
-        symbol_or_symbols=symbols,
-        timeframe=TimeFrame.Day,
-        start=start,
-        end=end,
-    )
-    bars = data_client.get_crypto_bars(request)
+
+def get_current_prices(exchange, symbols: list[str]) -> dict[str, float]:
+    """Huidige midprijs per symbool."""
     result = {}
-
     for symbol in symbols:
-        if symbol not in bars.df.index.get_level_values(0):
-            continue
-        df = bars.df.loc[symbol].tail(LEVELS_LOOKBACK_DAYS + 2)
-        if len(df) < LEVELS_LOOKBACK_DAYS:
-            continue
-        # Gemiddelde van laatste N dagen (minder gevoelig voor uitschieters dan 1 dag)
-        recent = df.tail(LEVELS_LOOKBACK_DAYS)
-        low = float(recent["low"].mean())
-        high = float(recent["high"].mean())
-        buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
-        sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-        if sell_level >= buy_level * (1 + MIN_SPREAD_PCT):
-            result[symbol] = (buy_level, sell_level)
+        try:
+            ticker = exchange.fetch_ticker(symbol)
+            bid = float(ticker.get("bid") or 0)
+            ask = float(ticker.get("ask") or 0)
+            last = float(ticker.get("last") or 0)
+            if bid and ask:
+                result[symbol] = (bid + ask) / 2
+            elif last:
+                result[symbol] = last
+        except Exception as e:
+            log.warning("get_current_prices %s: %s", symbol, e)
     return result
 
 
-def _get_levels_and_scores(data_client, symbols: list[str]) -> dict[str, tuple[float, float, float]]:
-    """Levels + score per symbol. score = spread_pct * (1 + range_volatility)."""
-    end = datetime.now(timezone.utc)
-    start = end - timedelta(days=5)
-    request = CryptoBarsRequest(
-        symbol_or_symbols=symbols,
-        timeframe=TimeFrame.Day,
-        start=start,
-        end=end,
-    )
-    bars = data_client.get_crypto_bars(request)
+def get_24h_levels(exchange, symbols: list[str]) -> dict[str, tuple[float, float]]:
+    """Bereken buy/sell niveaus uit recente daily bars."""
     result = {}
-
     for symbol in symbols:
-        if symbol not in bars.df.index.get_level_values(0):
-            continue
-        df = bars.df.loc[symbol].tail(LEVELS_LOOKBACK_DAYS + 2)
-        if len(df) < LEVELS_LOOKBACK_DAYS:
-            continue
-        recent = df.tail(LEVELS_LOOKBACK_DAYS)
-        low = float(recent["low"].mean())
-        high = float(recent["high"].mean())
-        buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
-        sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-        spread_ok = sell_level >= buy_level * (1 + MIN_SPREAD_PCT)
-        spread_pct = (sell_level - buy_level) / buy_level if spread_ok else 0
-        range_pct = (high - low) / low if low else 0
-        score = spread_pct * (1 + range_pct)
-        result[symbol] = (buy_level, sell_level, score)
+        try:
+            ohlcv = exchange.fetch_ohlcv(symbol, "1d", limit=LEVELS_LOOKBACK_DAYS + 2)
+            if len(ohlcv) < LEVELS_LOOKBACK_DAYS:
+                continue
+            recent = ohlcv[-LEVELS_LOOKBACK_DAYS:]
+            low = sum(bar[3] for bar in recent) / len(recent)
+            high = sum(bar[2] for bar in recent) / len(recent)
+            buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
+            sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
+            if sell_level >= buy_level * (1 + MIN_SPREAD_PCT):
+                result[symbol] = (buy_level, sell_level)
+        except Exception as e:
+            log.warning("get_24h_levels %s: %s", symbol, e)
     return result
+
+
+def _get_levels_and_scores(exchange, symbols: list[str]) -> dict[str, tuple[float, float, float]]:
+    """Levels + winstbaarheidsscore per symbool."""
+    result = {}
+    for symbol in symbols:
+        try:
+            ohlcv = exchange.fetch_ohlcv(symbol, "1d", limit=LEVELS_LOOKBACK_DAYS + 2)
+            if len(ohlcv) < LEVELS_LOOKBACK_DAYS:
+                continue
+            recent = ohlcv[-LEVELS_LOOKBACK_DAYS:]
+            low = sum(bar[3] for bar in recent) / len(recent)
+            high = sum(bar[2] for bar in recent) / len(recent)
+            buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
+            sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
+            spread_ok = sell_level >= buy_level * (1 + MIN_SPREAD_PCT)
+            spread_pct = (sell_level - buy_level) / buy_level if spread_ok else 0
+            range_pct = (high - low) / low if low else 0
+            score = spread_pct * (1 + range_pct)
+            result[symbol] = (buy_level, sell_level, score)
+        except Exception as e:
+            log.warning("_get_levels_and_scores %s: %s", symbol, e)
+    return result
+
+
+def get_positions(exchange, symbols: list[str]) -> dict[str, float]:
+    """Huidige crypto holdings: {symbol: total_qty}. Inclusief qty in open sell orders."""
+    b = exchange.fetch_balance()
+    result = {}
+    for symbol in symbols:
+        base = symbol.split("/")[0]
+        qty = float(b.get(base, {}).get("total", 0) or 0)
+        if qty > MIN_SELLABLE_QTY:
+            result[symbol] = qty
+    return result
+
+
+def get_free_sell_qty(exchange, symbol: str) -> float:
+    """Vrije qty die verkocht mag worden (niet gelocked in open orders)."""
+    b = exchange.fetch_balance()
+    base = symbol.split("/")[0]
+    return float(b.get(base, {}).get("free", 0) or 0)
 
 
 def select_top_symbols(
-    data_client, trading_client, pool: list[str], n: int
+    exchange, pool: list[str], n: int
 ) -> tuple[list[str], dict[str, tuple[float, float]]]:
-    """
-    Selecteer top N meest winstgevende symbolen uit pool.
-    Symbolen met open posities blijven altijd actief.
-    Retourneert (symbols, levels).
-    """
-    levels_scored = _get_levels_and_scores(data_client, pool)
-    positions = get_positions(trading_client, symbols=pool)
+    """Selecteer top N symbolen op score. Symbolen met posities blijven altijd actief."""
+    levels_scored = _get_levels_and_scores(exchange, pool)
+    positions = get_positions(exchange, pool)
     symbols_with_positions = set(positions.keys())
 
-    # Sorteer op score (hoogste eerst)
     sorted_by_score = sorted(
         levels_scored.items(),
         key=lambda x: x[1][2],
@@ -171,176 +183,53 @@ def select_top_symbols(
     )
 
     selected = list(symbols_with_positions)
-    for sym, (buy, sell, _) in sorted_by_score:
+    for sym, _ in sorted_by_score:
         if sym not in selected and len(selected) < n:
             selected.append(sym)
 
     levels = {sym: (buy, sell) for sym, (buy, sell, _) in sorted_by_score if sym in selected}
-    # Voor symbolen met posities zonder levels (geen bar data): haal levels apart op
     missing = [s for s in selected if s not in levels]
     if missing:
-        fallback = get_24h_levels(data_client, missing)
+        fallback = get_24h_levels(exchange, missing)
         levels.update(fallback)
     return selected, levels
 
 
-def _round_price(price: float) -> float:
-    """Round price to pass Alpaca validation. Explicit float() voor numpy types."""
-    p = float(price)
-    if p < 0.0001:
-        return round(p, 8)
-    if p < 1:
-        return round(p, 6)
-    return round(p, 4)
-
-
-
-
-def _norm_symbol(s: str) -> str:
-    """Normaliseer symbol naar DOT/USD formaat."""
-    if "/" in s:
-        return s
-    if s.endswith("USD"):
-        return f"{s[:-3]}/USD"
-    return f"{s}/USD"
-
-
-def _position_qty_float(p) -> float:
-    """Qty als float; Alpaca geeft soms string (exacte precisie)."""
-    q = p.qty
-    if isinstance(q, str):
-        return float(Decimal(q))
-    return float(q or 0)
-
-
-def get_positions(trading_client, symbols: list[str] | None = None) -> dict[str, tuple[float, float]]:
-    """Posities per symbol: {symbol: (qty, avg_entry_price)}. Filter op symbols indien gegeven."""
-    positions = trading_client.get_all_positions()
-    out = {}
-    for p in positions:
-        sym = _norm_symbol(p.symbol)
-        if symbols is None or sym in symbols:
-            out[sym] = (_position_qty_float(p), float(p.avg_entry_price or 0))
-    return out
-
-
-# Onder deze hoeveelheid crypto: geen sell (dust / afronding-ruis)
-MIN_SELLABLE_CRYPTO_QTY = Decimal("0.0001")  # strikter: 1e-4 (was 1e-5; vangt AVAX dust)
-
-
-def _find_position(trading_client, symbol: str):
-    """Alpaca Position voor dit symbol, of None."""
-    for p in trading_client.get_all_positions():
-        if _norm_symbol(p.symbol) == symbol:
-            return p
-    return None
-
-
-def _decimal_from_json_qty(raw) -> Decimal | None:
-    """Parse qty uit Alpaca JSON (meestal string, exact). Geen round() op floats."""
-    if raw is None or raw == "":
-        return None
-    if isinstance(raw, str):
-        try:
-            return Decimal(raw)
-        except Exception:
-            return None
-    if isinstance(raw, int):
-        return Decimal(raw)
-    if isinstance(raw, float):
-        return Decimal(repr(raw))
+def get_open_orders(exchange, symbol: str = None) -> list:
+    """Open orders, optioneel gefilterd op symbool."""
     try:
-        return Decimal(str(raw))
-    except Exception:
-        return None
+        if symbol:
+            return exchange.fetch_open_orders(symbol)
+        return exchange.fetch_open_orders()
+    except Exception as e:
+        log.warning("get_open_orders %s: %s", symbol, e)
+        return []
 
 
-def _sell_qty_decimal_from_position(p) -> Decimal:
-    """
-    Hoeveelheid die we mogen verkopen volgens Alpaca.
-
-    Primair: qty_available (niet gelocked in open orders) — zelfde als 'available' in API-fouten.
-    Fallback: qty als qty_available ontbreekt (oude clients / edge cases).
-
-    Let op: na cancel van een sell-order even wachten + positie verversen, anders kan
-    qty_available nog 0 zijn.
-    """
-    if p is None:
-        return Decimal(0)
-    data = p.model_dump(mode="json")
-
-    raw_avail = data.get("qty_available")
-    if raw_avail is not None and raw_avail != "":
-        d_avail = _decimal_from_json_qty(raw_avail)
-        if d_avail is not None:
-            if d_avail > 0:
-                return d_avail
-            # Expliciet 0: niets vrij te verkopen (o.a. nog gelocked)
-            return Decimal(0)
-
-    raw_qty = data.get("qty")
-    d_qty = _decimal_from_json_qty(raw_qty)
-    return d_qty if d_qty is not None and d_qty > 0 else Decimal(0)
-
-
-def _decimal_to_submit_sell_qty(d: Decimal) -> float:
-    """Decimal -> float voor LimitOrderRequest (qty komt uit Alpaca-strings, geen round()-bugs)."""
-    if d <= 0:
-        return 0.0
-    return float(d)
-
-
-def _submit_crypto_sell(trading_client, symbol: str, position, limit_sell: float) -> None:
-    """Plaats één limit sell; qty = Alpaca qty_available (of qty fallback)."""
-    d = _sell_qty_decimal_from_position(position)
-    qty_sell = _decimal_to_submit_sell_qty(d)
-    if qty_sell <= 0:
-        raise ValueError(f"qty must be > 0 (decimal={d!r})")
-    trading_client.submit_order(
-        LimitOrderRequest(
-            symbol=symbol,
-            qty=qty_sell,
-            side=OrderSide.SELL,
-            type=OrderType.LIMIT,
-            time_in_force=TimeInForce.GTC,
-            limit_price=_round_price(limit_sell),
-        )
-    )
-
-
-def get_open_orders(trading_client, symbol: str = None) -> list:
-    """Open orders, optioneel gefilterd op symbol."""
-    result = trading_client.get_orders(GetOrdersRequest(status=QueryOrderStatus.OPEN))
-    orders = result if isinstance(result, list) else result.get("orders", [])
-    if symbol:
-        return [o for o in orders if _norm_symbol(o.symbol) == symbol]
-    return list(orders)
-
-
-def _order_age_hours(order) -> float:
-    """Leeftijd van order in uren. Gebruik submitted_at of created_at."""
-    ts = getattr(order, "submitted_at", None) or getattr(order, "created_at", None)
+def _order_age_hours(order: dict) -> float:
+    """Leeftijd van order in uren (ccxt order dict)."""
+    ts = order.get("timestamp")
     if not ts:
         return 0.0
-    if isinstance(ts, str):
-        ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-    if hasattr(ts, "tzinfo") and ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
-    now = datetime.now(timezone.utc)
-    delta = now - ts
-    return delta.total_seconds() / 3600
+    dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+    return (datetime.now(timezone.utc) - dt).total_seconds() / 3600
 
 
-def get_buying_power(trading_client) -> float:
-    """Beschikbaar cash."""
-    acc = trading_client.get_account()
-    return float(acc.cash)
+def _round_amount(exchange, symbol: str, amount: float) -> float:
+    """Afronden naar exchange precisie voor hoeveelheid."""
+    try:
+        return float(exchange.amount_to_precision(symbol, amount))
+    except Exception:
+        return round(amount, 8)
 
 
-def get_portfolio_value(trading_client) -> float:
-    """Totaal portfolio waarde (equity)."""
-    acc = trading_client.get_account()
-    return float(getattr(acc, "equity", 0) or getattr(acc, "portfolio_value", 0) or 0)
+def _round_price(exchange, symbol: str, price: float) -> float:
+    """Afronden naar exchange precisie voor prijs."""
+    try:
+        return float(exchange.price_to_precision(symbol, price))
+    except Exception:
+        p = float(price)
+        return round(p, 2) if p >= 1 else round(p, 6)
 
 
 def _state_path() -> Path:
@@ -348,356 +237,310 @@ def _state_path() -> Path:
 
 
 def _load_state() -> dict:
-    """Laad state uit file."""
     path = _state_path()
     if not path.exists():
-        return {"entries": {}, "notified_order_ids": []}
+        return {"entries": {}, "notified_trade_ids": []}
     try:
-        import json
         data = json.loads(path.read_text())
         return {
             "entries": data.get("entries", {}),
-            "notified_order_ids": data.get("notified_order_ids", []),
+            # compatibel met oude notified_order_ids key
+            "notified_trade_ids": data.get("notified_trade_ids", data.get("notified_order_ids", [])),
         }
     except Exception:
-        return {"entries": {}, "notified_order_ids": []}
+        return {"entries": {}, "notified_trade_ids": []}
 
 
 def _save_state(entries: dict | None = None, notified_ids: list[str] | None = None) -> None:
-    """Bewaar state. entries/notified_ids = None betekent: niet overschrijven."""
     path = _state_path()
     state = _load_state()
     if entries is not None:
         state["entries"] = entries
     if notified_ids is not None:
-        state["notified_order_ids"] = notified_ids[-200:]
+        state["notified_trade_ids"] = notified_ids[-200:]
     try:
-        import json
         path.write_text(json.dumps(state, indent=2))
     except Exception as e:
         log.warning("Kon state niet opslaan: %s", e)
 
 
-def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
-    """Check gevulde orders sinds vorige run, stuur Telegram notificatie. Retourneert aantal nieuwe trades."""
+def _check_and_notify_filled_trades(
+    exchange, symbols: list[str], state_entries: dict
+) -> tuple[int, dict]:
+    """
+    Detecteer gevulde trades (fills) van de laatste 4 uur.
+    Stuurt Telegram notificatie per fill. Retourneert (aantal_nieuw, updated_entries).
+    """
     try:
-        after = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
-        req = GetOrdersRequest(status=QueryOrderStatus.CLOSED, after=after)
-        orders = trading_client.get_orders(req)
-        portfolio_value = get_portfolio_value(trading_client)
+        since_ms = int((datetime.now(timezone.utc) - timedelta(hours=4)).timestamp() * 1000)
         state = _load_state()
-        entries = dict(state["entries"])
-        notified_ids = list(state.get("notified_order_ids", []))
+        notified_ids = list(state.get("notified_trade_ids", []))
+        entries = dict(state_entries)
         new_notified = []
+        new_count = 0
 
-        for o in orders or []:
-            if getattr(o, "status", None) != OrderStatus.FILLED:
+        portfolio_value = get_portfolio_value(exchange)
+
+        for symbol in symbols:
+            try:
+                trades = exchange.fetch_my_trades(symbol, since=since_ms)
+            except Exception as e:
+                log.warning("fetch_my_trades %s: %s", symbol, e)
                 continue
-            oid = str(getattr(o, "id", ""))
-            if oid in notified_ids:
-                continue
-            sym = _norm_symbol(o.symbol)
-            if sym not in symbols:
-                continue
-            qty = float(o.filled_qty or 0)
-            price = float(o.filled_avg_price or 0)
-            if not qty or not price:
-                continue
-            side = "buy" if o.side == OrderSide.BUY else "sell"
-            profit = None
-            entry_price_for_log = None
-            if side == "sell" and sym in entries:
-                entry = entries[sym].get("entry", 0)
-                entry_price_for_log = entry if entry else None
-                if entry:
-                    profit = (price - entry) * qty
-                del entries[sym]
-            notify_trade_filled(side, sym, qty, price, profit, portfolio_value)
-            log_trade(
-                order_id=oid,
-                symbol=sym,
-                side=side,
-                qty=qty,
-                price=price,
-                entry_price=entry_price_for_log,
-                profit=profit,
-                portfolio_value=portfolio_value,
-            )
-            new_notified.append(oid)
+
+            for t in trades:
+                tid = str(t.get("id", ""))
+                if not tid or tid in notified_ids:
+                    continue
+                side = t.get("side", "")
+                qty = float(t.get("amount") or 0)
+                price = float(t.get("price") or 0)
+                if not qty or not price:
+                    continue
+
+                profit = None
+                entry_price_for_log = None
+
+                if side == "sell" and symbol in entries:
+                    entry = entries[symbol].get("entry", 0)
+                    entry_price_for_log = entry if entry else None
+                    if entry:
+                        profit = (price - entry) * qty
+                    del entries[symbol]
+                elif side == "buy":
+                    entries[symbol] = {"qty": qty, "entry": price}
+
+                notify_trade_filled(side, symbol, qty, price, profit, portfolio_value)
+                log_trade(
+                    order_id=tid,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    price=price,
+                    entry_price=entry_price_for_log,
+                    profit=profit,
+                    portfolio_value=portfolio_value,
+                )
+                new_notified.append(tid)
+                new_count += 1
 
         if new_notified:
             _save_state(notified_ids=notified_ids + new_notified)
-        return len(new_notified)
+
+        return new_count, entries
+
     except Exception as e:
-        log.warning("check filled orders: %s", e)
-        return 0
+        log.warning("check filled trades: %s", e)
+        return 0, state_entries
 
 
 def run_once():
     """Eén run van de trading bot."""
-    trading_client, data_client = get_trading_clients()
+    exchange, dry_run = get_exchange()
 
-    # Selecteer top N meest winstgevende symbolen uit pool
-    symbols, levels = select_top_symbols(
-        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE
-    )
+    state = _load_state()
+    state_entries = dict(state.get("entries", {}))
+
+    symbols, levels = select_top_symbols(exchange, SYMBOL_POOL, SYMBOLS_ACTIVE)
     if not symbols:
-        log.warning("Geen symbolen geselecteerd uit pool")
+        log.warning("Geen symbolen geselecteerd")
         send_telegram("⚠️ Geen symbolen geselecteerd uit pool")
         return {}
 
-    new_trades = _check_and_notify_filled_orders(trading_client, SYMBOL_POOL)
+    new_trades, state_entries = _check_and_notify_filled_trades(exchange, SYMBOL_POOL, state_entries)
 
-    current_prices = get_current_prices(data_client, symbols)
-    positions = get_positions(trading_client, symbols=symbols)
-    buying_power = get_buying_power(trading_client)
+    current_prices = get_current_prices(exchange, symbols)
+    balance_eur = get_balance(exchange)
+    positions = get_positions(exchange, symbols)
 
-    capital_per = buying_power / len(symbols)
+    # Gebruik maximaal MAX_CAPITAL_EUR van het account
+    effective_balance = min(balance_eur, MAX_CAPITAL_EUR)
+    capital_per = effective_balance / len(symbols)
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
     log.info("Geselecteerd: %s", ", ".join(symbols))
-    log.info("Buying power: $%.2f | Per asset: $%.2f", buying_power, capital_per)
+    log.info("Vrij EUR: €%.2f | Effectief: €%.2f | Per asset: €%.2f", balance_eur, effective_balance, capital_per)
     log.info("Levels: %s", levels)
-    log.info("Current prices: %s", current_prices)
-    log.info("Positions: %s", positions)
+    log.info("Prijzen: %s", current_prices)
+    log.info("Posities: %s", positions)
     log.info("")
 
     for symbol in symbols:
         if symbol not in levels:
             continue
         buy_level, sell_level = levels[symbol]
-        pos_data = positions.get(symbol, (0, 0))
-        pos_qty, avg_entry = pos_data
-        open_orders = get_open_orders(trading_client, symbol)
+        pos_qty = positions.get(symbol, 0)
+        open_orders = get_open_orders(exchange, symbol)
 
-        # Cleanup: geen positie maar wel sell orders -> annuleer
+        # Cleanup: geen positie maar wel sell orders → annuleer
         if pos_qty <= 0:
             for o in open_orders:
-                if o.side == OrderSide.SELL:
+                if o.get("side") == "sell":
                     try:
-                        trading_client.cancel_order_by_id(o.id)
+                        if not dry_run:
+                            exchange.cancel_order(o["id"], symbol)
                         log.info("  %s: Orphan sell order geannuleerd", symbol)
                     except Exception:
                         pass
 
-        if pos_qty > 0 and Decimal(str(pos_qty)) < MIN_SELLABLE_CRYPTO_QTY:
-            # Dust: annuleer sell orders, geen nieuwe plaatsen (voorkomt qty must be > 0 / insufficient balance)
-            for o in open_orders:
-                if o.side == OrderSide.SELL:
-                    try:
-                        trading_client.cancel_order_by_id(o.id)
-                        log.info("  %s: Dust positie (qty=%s), sell order geannuleerd", symbol, pos_qty)
-                    except Exception:
-                        pass
+        if 0 < pos_qty <= MIN_SELLABLE_QTY:
+            log.info("  %s: Dust positie (qty=%.8f), skip", symbol, pos_qty)
             continue
 
         if pos_qty > 0:
-            # We hebben positie: zorg voor sell + stop-loss, update als prijs bewogen is
-            existing_sell = next((o for o in open_orders if o.side == OrderSide.SELL and o.order_type == OrderType.LIMIT), None)
-            existing_stop = next((o for o in open_orders if o.side == OrderSide.SELL and o.order_type == OrderType.STOP_LIMIT), None)
-            entry = avg_entry if avg_entry > 0 else buy_level
-            stop_price = entry - STOP_LOSS_PER_UNIT
+            # Positie aanwezig: beheer sell order
+            existing_sell = next(
+                (o for o in open_orders if o.get("side") == "sell" and o.get("type") == "limit"),
+                None,
+            )
             limit_sell = sell_level
-
             needs_new_sell = True
 
             if existing_sell:
-                old_sell_price = float(existing_sell.limit_price)
+                old_sell_price = float(existing_sell.get("price") or 0)
                 age_hours = _order_age_hours(existing_sell)
-                price_diff = abs(old_sell_price - limit_sell) / old_sell_price
+                price_diff = abs(old_sell_price - limit_sell) / old_sell_price if old_sell_price else 1
                 current_price = current_prices.get(symbol)
 
-                # Stale price: huidige prijs >5% onder sell target -> order te optimistisch
                 if current_price and current_price < limit_sell * (1 - ORDER_STALE_PRICE_THRESHOLD):
                     try:
-                        trading_client.cancel_order_by_id(existing_sell.id)
-                        if existing_stop:
-                            trading_client.cancel_order_by_id(existing_stop.id)
-                        pct_below = (limit_sell - current_price) / limit_sell * 100
-                        log.info("  %s: Sell order vervangen (prijs $%.2f is %.1f%% onder target)", symbol, current_price, pct_below)
-                        send_telegram(f"🔄 {symbol}: Sell order vervangen, prijs {pct_below:.1f}% onder target, nieuwe @ ${limit_sell:.4f}")
+                        if not dry_run:
+                            exchange.cancel_order(existing_sell["id"], symbol)
+                        pct = (limit_sell - current_price) / limit_sell * 100
+                        log.info("  %s: Sell vervangen (prijs %.1f%% onder target)", symbol, pct)
+                        send_telegram(f"🔄 {symbol}: Sell vervangen, prijs {pct:.1f}% onder target, nieuwe @ €{limit_sell:.4f}")
                         stats["updated"] += 1
                     except Exception as e:
-                        log.warning("  %s: Fout bij annuleren sell order: %s", symbol, e)
+                        log.warning("  %s: Fout annuleren sell: %s", symbol, e)
                         needs_new_sell = False
                 elif age_hours >= ORDER_MAX_AGE_HOURS:
                     try:
-                        trading_client.cancel_order_by_id(existing_sell.id)
-                        if existing_stop:
-                            trading_client.cancel_order_by_id(existing_stop.id)
-                        log.info("  %s: Sell order vervangen na %.0fh (verse 24h window)", symbol, age_hours)
-                        send_telegram(f"🔄 {symbol}: Sell order vervangen na {age_hours:.0f}h, nieuwe levels @ ${limit_sell:.4f}")
+                        if not dry_run:
+                            exchange.cancel_order(existing_sell["id"], symbol)
+                        log.info("  %s: Sell vervangen na %.0fh", symbol, age_hours)
+                        send_telegram(f"🔄 {symbol}: Sell vervangen na {age_hours:.0f}h, nieuwe @ €{limit_sell:.4f}")
                         stats["updated"] += 1
                     except Exception as e:
-                        log.warning("  %s: Fout bij annuleren sell order: %s", symbol, e)
+                        log.warning("  %s: Fout annuleren sell: %s", symbol, e)
                         needs_new_sell = False
                 elif price_diff > ORDER_UPDATE_THRESHOLD:
                     try:
-                        trading_client.cancel_order_by_id(existing_sell.id)
-                        if existing_stop:
-                            trading_client.cancel_order_by_id(existing_stop.id)
-                        log.info("  %s: Sell order bijgewerkt (%.4f -> %.4f, %.1f%% verschil)", symbol, old_sell_price, limit_sell, price_diff * 100)
-                        send_telegram(f"🔄 {symbol}: Sell order bijgewerkt @ ${limit_sell:.4f} (was ${old_sell_price:.4f})")
+                        if not dry_run:
+                            exchange.cancel_order(existing_sell["id"], symbol)
+                        log.info("  %s: Sell bijgewerkt (%.4f → %.4f)", symbol, old_sell_price, limit_sell)
+                        send_telegram(f"🔄 {symbol}: Sell bijgewerkt @ €{limit_sell:.4f} (was €{old_sell_price:.4f})")
                         stats["updated"] += 1
                     except Exception as e:
-                        log.warning("  %s: Fout bij annuleren sell order: %s", symbol, e)
+                        log.warning("  %s: Fout annuleren sell: %s", symbol, e)
                         needs_new_sell = False
                 else:
-                    log.info("  %s: Sell order ongewijzigd @ $%.4f (%.1f%% verschil, %.0fh oud)", symbol, old_sell_price, price_diff * 100, age_hours)
+                    log.info(
+                        "  %s: Sell ongewijzigd @ €%.4f (%.1f%% diff, %.0fh oud)",
+                        symbol, old_sell_price, price_diff * 100, age_hours,
+                    )
                     stats["unchanged"] += 1
                     needs_new_sell = False
 
             if needs_new_sell:
-                try:
-                    # Na cancel: wacht tot balance vrijkomt (Alpaca heeft vertraging)
-                    if existing_sell and ORDER_REPLACE_DELAY_SEC > 0:
-                        time.sleep(ORDER_REPLACE_DELAY_SEC)
-                    assert ALPACA_CRYPTO_SINGLE_EXIT_ORDER, "Alpaca crypto: max 1 exit order per positie"
-                    pos_live = _find_position(trading_client, symbol)
-                    d_live = _sell_qty_decimal_from_position(pos_live)
-                    if pos_live is None or d_live <= 0:
-                        log.warning(
-                            "  %s: Geen sell geplaatst: geen positie of qty=0 (na cancel / sync)",
-                            symbol,
-                        )
-                    else:
-                        _submit_crypto_sell(trading_client, symbol, pos_live, limit_sell)
-                        log.info(
-                            "  %s: Sell limit @ $%.4f (stop @ $%.4f niet geplaatst - crypto 1 order/positie)",
-                            symbol,
-                            limit_sell,
-                            stop_price,
-                        )
+                if existing_sell and ORDER_REPLACE_DELAY_SEC > 0:
+                    time.sleep(ORDER_REPLACE_DELAY_SEC)
+                free_qty = get_free_sell_qty(exchange, symbol)
+                if free_qty <= MIN_SELLABLE_QTY:
+                    log.warning("  %s: free qty %.8f te klein voor sell", symbol, free_qty)
+                else:
+                    sell_qty = _round_amount(exchange, symbol, free_qty)
+                    sell_price = _round_price(exchange, symbol, limit_sell)
+                    try:
+                        if not dry_run:
+                            exchange.create_limit_sell_order(symbol, sell_qty, sell_price)
+                        tag = " [DRY RUN]" if dry_run else ""
+                        log.info("  %s: Sell limit @ €%.4f (qty=%.6f)%s", symbol, limit_sell, sell_qty, tag)
                         if not existing_sell:
-                            send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
+                            send_telegram(f"📊 {symbol}: Sell limit @ €{limit_sell:.4f} geplaatst{tag}")
                             stats["placed"] += 1
-                except Exception as e:
-                    err_str = str(e)
-                    if "insufficient balance" in err_str.lower() or "40310000" in err_str:
-                        log.info("  %s: Retry na insufficient balance...", symbol)
-                        time.sleep(ORDER_REPLACE_DELAY_SEC + 2)
-                        pos_live = _find_position(trading_client, symbol)
-                        d_live = _sell_qty_decimal_from_position(pos_live)
-                        try:
-                            if pos_live is not None and d_live > 0:
-                                _submit_crypto_sell(trading_client, symbol, pos_live, limit_sell)
-                                log.info("  %s: Sell limit @ $%.4f (retry ok)", symbol, limit_sell)
-                                if not existing_sell:
-                                    send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
-                                    stats["placed"] += 1
-                            else:
-                                log.warning("  %s: Geen positie na balance-retry", symbol)
-                        except Exception as e2:
-                            log.warning("  %s: Fout (retry): %s", symbol, e2)
-                            send_telegram(f"❌ {symbol}: Fout orders: {e2}")
-                    elif "40010001" in err_str or "qty must be" in err_str.lower():
-                        log.info("  %s: Retry na qty-fout, positie opnieuw ophalen...", symbol)
-                        time.sleep(ORDER_REPLACE_DELAY_SEC + 2)
-                        pos_live = _find_position(trading_client, symbol)
-                        d_live = _sell_qty_decimal_from_position(pos_live)
-                        try:
-                            if pos_live is not None and d_live > 0:
-                                _submit_crypto_sell(trading_client, symbol, pos_live, limit_sell)
-                                log.info("  %s: Sell limit @ $%.4f (retry na qty)", symbol, limit_sell)
-                                if not existing_sell:
-                                    send_telegram(f"📊 {symbol}: Sell limit @ ${limit_sell:.4f} geplaatst")
-                                    stats["placed"] += 1
-                            else:
-                                log.warning("  %s: Geen positie na qty-retry", symbol)
-                        except Exception as e2:
-                            log.warning("  %s: Fout (qty retry): %s", symbol, e2)
-                            send_telegram(f"❌ {symbol}: Fout orders: {e2}")
-                    else:
-                        log.warning("  %s: Fout: %s", symbol, e)
-                        send_telegram(f"❌ {symbol}: Fout orders: {e}")
+                    except Exception as e:
+                        log.warning("  %s: Fout sell order: %s", symbol, e)
+                        send_telegram(f"❌ {symbol}: Fout sell order: {e}")
         else:
-            # Geen positie: plaats of update limit buy order
+            # Geen positie: beheer buy order
             if capital_per < 10:
-                log.info("  %s: Te weinig kapitaal ($%.2f, min $10), skip", symbol, capital_per)
-                stats["skipped"] += 1
-            elif buy_level < 0.0001:
-                # Alpaca: "limit price must be > 0" voor zeer lage prijzen (SHIB ~5e-6, PEPE)
-                log.info("  %s: Prijs $%.8f te laag - Alpaca API accepteert dit niet", symbol, float(buy_level))
-                send_telegram(f"⚠️ {symbol}: Overgeslagen (prijs te laag voor Alpaca limit orders)")
+                log.info("  %s: Te weinig kapitaal (€%.2f, min €10), skip", symbol, capital_per)
                 stats["skipped"] += 1
             else:
-                existing_buy = next((o for o in open_orders if o.side == OrderSide.BUY), None)
+                existing_buy = next((o for o in open_orders if o.get("side") == "buy"), None)
                 needs_new_order = True
 
                 if existing_buy:
-                    old_price = float(existing_buy.limit_price)
+                    old_price = float(existing_buy.get("price") or 0)
                     age_hours = _order_age_hours(existing_buy)
-                    price_diff = abs(old_price - buy_level) / old_price
+                    price_diff = abs(old_price - buy_level) / old_price if old_price else 1
                     current_price = current_prices.get(symbol)
 
-                    # Stale price: huidige prijs >5% boven order -> vult waarschijnlijk niet
                     if current_price and current_price > old_price * (1 + ORDER_STALE_PRICE_THRESHOLD):
                         try:
-                            trading_client.cancel_order_by_id(existing_buy.id)
-                            pct_above = (current_price - old_price) / old_price * 100
-                            log.info("  %s: Buy order vervangen (prijs $%.2f is %.1f%% boven order)", symbol, current_price, pct_above)
-                            send_telegram(f"🔄 {symbol}: Buy order vervangen, prijs {pct_above:.1f}% boven order, nieuwe @ ${buy_level:.4f}")
+                            if not dry_run:
+                                exchange.cancel_order(existing_buy["id"], symbol)
+                            pct = (current_price - old_price) / old_price * 100
+                            log.info("  %s: Buy vervangen (prijs %.1f%% boven order)", symbol, pct)
+                            send_telegram(f"🔄 {symbol}: Buy vervangen, prijs {pct:.1f}% boven order, nieuwe @ €{buy_level:.4f}")
                             stats["updated"] += 1
                         except Exception as e:
-                            log.warning("  %s: Fout bij annuleren buy order: %s", symbol, e)
+                            log.warning("  %s: Fout annuleren buy: %s", symbol, e)
                             needs_new_order = False
                     elif age_hours >= ORDER_MAX_AGE_HOURS:
                         try:
-                            trading_client.cancel_order_by_id(existing_buy.id)
-                            log.info("  %s: Buy order vervangen na %.0fh (verse 24h window)", symbol, age_hours)
-                            send_telegram(f"🔄 {symbol}: Buy order vervangen na {age_hours:.0f}h, nieuwe levels @ ${buy_level:.4f}")
+                            if not dry_run:
+                                exchange.cancel_order(existing_buy["id"], symbol)
+                            log.info("  %s: Buy vervangen na %.0fh", symbol, age_hours)
+                            send_telegram(f"🔄 {symbol}: Buy vervangen na {age_hours:.0f}h, nieuwe @ €{buy_level:.4f}")
                             stats["updated"] += 1
                         except Exception as e:
-                            log.warning("  %s: Fout bij annuleren buy order: %s", symbol, e)
+                            log.warning("  %s: Fout annuleren buy: %s", symbol, e)
                             needs_new_order = False
                     elif price_diff > ORDER_UPDATE_THRESHOLD:
                         try:
-                            trading_client.cancel_order_by_id(existing_buy.id)
-                            log.info("  %s: Buy order bijgewerkt (%.4f -> %.4f, %.1f%% verschil)", symbol, old_price, buy_level, price_diff * 100)
-                            send_telegram(f"🔄 {symbol}: Buy order bijgewerkt @ ${buy_level:.4f} (was ${old_price:.4f})")
+                            if not dry_run:
+                                exchange.cancel_order(existing_buy["id"], symbol)
+                            log.info("  %s: Buy bijgewerkt (%.4f → %.4f)", symbol, old_price, buy_level)
+                            send_telegram(f"🔄 {symbol}: Buy bijgewerkt @ €{buy_level:.4f} (was €{old_price:.4f})")
                             stats["updated"] += 1
                         except Exception as e:
-                            log.warning("  %s: Fout bij annuleren buy order: %s", symbol, e)
+                            log.warning("  %s: Fout annuleren buy: %s", symbol, e)
                             needs_new_order = False
                     else:
-                        log.info("  %s: Buy order ongewijzigd @ $%.4f (%.1f%% verschil, %.0fh oud)", symbol, old_price, price_diff * 100, age_hours)
+                        log.info(
+                            "  %s: Buy ongewijzigd @ €%.4f (%.1f%% diff, %.0fh oud)",
+                            symbol, old_price, price_diff * 100, age_hours,
+                        )
                         stats["unchanged"] += 1
                         needs_new_order = False
 
                 if needs_new_order:
-                    # Na cancel: wacht tot balance vrijkomt
                     if existing_buy and ORDER_REPLACE_DELAY_SEC > 0:
                         time.sleep(ORDER_REPLACE_DELAY_SEC)
                     qty = capital_per / buy_level
-                    limit_px = _round_price(buy_level)
+                    buy_qty = _round_amount(exchange, symbol, qty)
+                    buy_price = _round_price(exchange, symbol, buy_level)
                     try:
-                        trading_client.submit_order(
-                            LimitOrderRequest(
-                                symbol=symbol,
-                                qty=round(qty, 6),
-                                side=OrderSide.BUY,
-                                type=OrderType.LIMIT,
-                                time_in_force=TimeInForce.GTC,
-                                limit_price=limit_px,
-                            )
-                        )
-                        price_str = f"${buy_level:.8f}" if buy_level < 0.001 else f"${buy_level:.4f}"
-                        log.info("  %s: Limit buy @ %s ($%.0f)", symbol, price_str, capital_per)
+                        if not dry_run:
+                            exchange.create_limit_buy_order(symbol, buy_qty, buy_price)
+                        tag = " [DRY RUN]" if dry_run else ""
+                        log.info("  %s: Limit buy @ €%.4f (€%.0f)%s", symbol, buy_level, capital_per, tag)
                         if not existing_buy:
-                            send_telegram(f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_per:.0f}) geplaatst")
+                            send_telegram(f"📊 {symbol}: Limit buy @ €{buy_level:.4f} (€{capital_per:.0f}) geplaatst{tag}")
                             stats["placed"] += 1
                     except Exception as e:
-                        log.warning("  %s: Fout buy: %s", symbol, e)
+                        log.warning("  %s: Fout buy order: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
-    # Bewaar entry prices voor volgende run (profit berekening bij sell)
-    entries = {sym: {"qty": qty, "entry": entry} for sym, (qty, entry) in positions.items() if entry > 0}
-    _save_state(entries=entries)
+    _save_state(entries=state_entries)
 
-    # Run summary (incl. trade-status en actieve symbolen)
     trade_status = f"{new_trades} nieuwe trade(s) gevuld" if new_trades else "Geen nieuwe trades gevuld"
-    summary = f"Run: {stats['placed']} geplaatst, {stats['updated']} bijgewerkt, {stats['unchanged']} ongewijzigd, {stats['skipped']} overgeslagen | {trade_status}"
+    summary = (
+        f"Run: {stats['placed']} geplaatst, {stats['updated']} bijgewerkt, "
+        f"{stats['unchanged']} ongewijzigd, {stats['skipped']} overgeslagen | {trade_status}"
+    )
     if symbols:
         summary += f"\nActief: {', '.join(symbols)}"
     log.info(summary)
@@ -707,9 +550,10 @@ def run_once():
 
 def main():
     log.info("=" * 50)
-    log.info("MCP-Alpaca Live Paper Trader")
+    log.info("Kraken Range Trader")
     log.info("=" * 50)
     log.info("Pool: %s (top %d actief)", ", ".join(SYMBOL_POOL), SYMBOLS_ACTIVE)
+    log.info("Max kapitaal: €%.0f", MAX_CAPITAL_EUR)
     log.info("Run op: %s", datetime.now().isoformat())
     log.info("")
 
