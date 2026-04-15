@@ -220,14 +220,18 @@ def select_top_symbols(
     return selected, levels
 
 
-def get_open_orders(exchange, symbol: str = None) -> list:
-    """Open orders, optioneel gefilterd op symbool."""
+def get_bot_open_orders(exchange, symbol: str, bot_order_ids: set) -> list:
+    """
+    Haal alleen open orders op die door deze bot geplaatst zijn.
+    Filtert op opgeslagen order IDs — andere orders (Bitsgap, app, etc.) worden genegeerd.
+    """
+    if not bot_order_ids:
+        return []
     try:
-        if symbol:
-            return exchange.fetch_open_orders(symbol)
-        return exchange.fetch_open_orders()
+        all_orders = exchange.fetch_open_orders(symbol)
+        return [o for o in all_orders if o["id"] in bot_order_ids]
     except Exception as e:
-        log.warning("get_open_orders %s: %s", symbol, e)
+        log.warning("get_bot_open_orders %s: %s", symbol, e)
         return []
 
 
@@ -264,25 +268,32 @@ def _state_path() -> Path:
 def _load_state() -> dict:
     path = _state_path()
     if not path.exists():
-        return {"entries": {}, "notified_trade_ids": []}
+        return {"entries": {}, "notified_trade_ids": [], "bot_orders": {}}
     try:
         data = json.loads(path.read_text())
         return {
             "entries": data.get("entries", {}),
-            # compatibel met oude notified_order_ids key
             "notified_trade_ids": data.get("notified_trade_ids", data.get("notified_order_ids", [])),
+            # bot_orders: {symbol: {"buy": order_id, "sell": order_id}}
+            "bot_orders": data.get("bot_orders", {}),
         }
     except Exception:
-        return {"entries": {}, "notified_trade_ids": []}
+        return {"entries": {}, "notified_trade_ids": [], "bot_orders": {}}
 
 
-def _save_state(entries: dict | None = None, notified_ids: list[str] | None = None) -> None:
+def _save_state(
+    entries: dict | None = None,
+    notified_ids: list[str] | None = None,
+    bot_orders: dict | None = None,
+) -> None:
     path = _state_path()
     state = _load_state()
     if entries is not None:
         state["entries"] = entries
     if notified_ids is not None:
         state["notified_trade_ids"] = notified_ids[-200:]
+    if bot_orders is not None:
+        state["bot_orders"] = bot_orders
     try:
         path.write_text(json.dumps(state, indent=2))
     except Exception as e:
@@ -365,6 +376,9 @@ def run_once():
 
     state = _load_state()
     state_entries = dict(state.get("entries", {}))
+    # bot_orders: {symbol: {"buy": order_id, "sell": order_id}}
+    # Alleen orders in dit dict worden aangeraakt — andere orders blijven ongemoeid.
+    bot_orders = dict(state.get("bot_orders", {}))
 
     symbols, levels = select_top_symbols(exchange, SYMBOL_POOL, SYMBOLS_ACTIVE)
     if not symbols:
@@ -378,7 +392,6 @@ def run_once():
     balance_eur = get_balance(exchange)
     positions = get_positions(exchange, symbols)
 
-    # Gebruik maximaal MAX_CAPITAL_EUR van het account
     effective_balance = min(balance_eur, MAX_CAPITAL_EUR)
     capital_per = effective_balance / len(symbols)
 
@@ -396,16 +409,20 @@ def run_once():
             continue
         buy_level, sell_level = levels[symbol]
         pos_qty = positions.get(symbol, 0)
-        open_orders = get_open_orders(exchange, symbol)
 
-        # Cleanup: geen positie maar wel sell orders → annuleer
+        # Haal alleen bot-eigen orders op (andere orders worden volledig genegeerd)
+        sym_bot_ids = set(v for v in bot_orders.get(symbol, {}).values() if v)
+        open_orders = get_bot_open_orders(exchange, symbol, sym_bot_ids)
+
+        # Cleanup: geen positie maar bot heeft sell order → annuleer
         if pos_qty <= 0:
             for o in open_orders:
                 if o.get("side") == "sell":
                     try:
                         if not dry_run:
                             exchange.cancel_order(o["id"], symbol)
-                        log.info("  %s: Orphan sell order geannuleerd", symbol)
+                        bot_orders.setdefault(symbol, {}).pop("sell", None)
+                        log.info("  %s: Orphan bot sell order geannuleerd", symbol)
                     except Exception:
                         pass
 
@@ -414,7 +431,6 @@ def run_once():
             continue
 
         if pos_qty > 0:
-            # Positie aanwezig: beheer sell order
             existing_sell = next(
                 (o for o in open_orders if o.get("side") == "sell" and o.get("type") == "limit"),
                 None,
@@ -432,6 +448,7 @@ def run_once():
                     try:
                         if not dry_run:
                             exchange.cancel_order(existing_sell["id"], symbol)
+                        bot_orders.setdefault(symbol, {}).pop("sell", None)
                         pct = (limit_sell - current_price) / limit_sell * 100
                         tag = " [DRY RUN]" if dry_run else ""
                         log.info("  %s: Sell vervangen (prijs %.1f%% onder target)%s", symbol, pct, tag)
@@ -444,6 +461,7 @@ def run_once():
                     try:
                         if not dry_run:
                             exchange.cancel_order(existing_sell["id"], symbol)
+                        bot_orders.setdefault(symbol, {}).pop("sell", None)
                         tag = " [DRY RUN]" if dry_run else ""
                         log.info("  %s: Sell vervangen na %.0fh%s", symbol, age_hours, tag)
                         send_telegram(f"🔄 {symbol}: Sell vervangen na {age_hours:.0f}h, nieuwe @ €{limit_sell:.4f}{tag}")
@@ -455,6 +473,7 @@ def run_once():
                     try:
                         if not dry_run:
                             exchange.cancel_order(existing_sell["id"], symbol)
+                        bot_orders.setdefault(symbol, {}).pop("sell", None)
                         tag = " [DRY RUN]" if dry_run else ""
                         log.info("  %s: Sell bijgewerkt (%.4f → %.4f)%s", symbol, old_sell_price, limit_sell, tag)
                         send_telegram(f"🔄 {symbol}: Sell bijgewerkt @ €{limit_sell:.4f} (was €{old_sell_price:.4f}){tag}")
@@ -480,9 +499,10 @@ def run_once():
                     sell_qty = _round_amount(exchange, symbol, free_qty)
                     sell_price = _round_price(exchange, symbol, limit_sell)
                     try:
-                        if not dry_run:
-                            exchange.create_limit_sell_order(symbol, sell_qty, sell_price)
                         tag = " [DRY RUN]" if dry_run else ""
+                        if not dry_run:
+                            result = exchange.create_limit_sell_order(symbol, sell_qty, sell_price)
+                            bot_orders.setdefault(symbol, {})["sell"] = result["id"]
                         log.info("  %s: Sell limit @ €%.4f (qty=%.6f)%s", symbol, limit_sell, sell_qty, tag)
                         if not existing_sell:
                             send_telegram(f"📊 {symbol}: Sell limit @ €{limit_sell:.4f} geplaatst{tag}")
@@ -491,7 +511,6 @@ def run_once():
                         log.warning("  %s: Fout sell order: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout sell order: {e}")
         else:
-            # Geen positie: beheer buy order
             if capital_per < 10:
                 log.info("  %s: Te weinig kapitaal (€%.2f, min €10), skip", symbol, capital_per)
                 stats["skipped"] += 1
@@ -509,6 +528,7 @@ def run_once():
                         try:
                             if not dry_run:
                                 exchange.cancel_order(existing_buy["id"], symbol)
+                            bot_orders.setdefault(symbol, {}).pop("buy", None)
                             pct = (current_price - old_price) / old_price * 100
                             tag = " [DRY RUN]" if dry_run else ""
                             log.info("  %s: Buy vervangen (prijs %.1f%% boven order)%s", symbol, pct, tag)
@@ -521,6 +541,7 @@ def run_once():
                         try:
                             if not dry_run:
                                 exchange.cancel_order(existing_buy["id"], symbol)
+                            bot_orders.setdefault(symbol, {}).pop("buy", None)
                             tag = " [DRY RUN]" if dry_run else ""
                             log.info("  %s: Buy vervangen na %.0fh%s", symbol, age_hours, tag)
                             send_telegram(f"🔄 {symbol}: Buy vervangen na {age_hours:.0f}h, nieuwe @ €{buy_level:.4f}{tag}")
@@ -532,6 +553,7 @@ def run_once():
                         try:
                             if not dry_run:
                                 exchange.cancel_order(existing_buy["id"], symbol)
+                            bot_orders.setdefault(symbol, {}).pop("buy", None)
                             tag = " [DRY RUN]" if dry_run else ""
                             log.info("  %s: Buy bijgewerkt (%.4f → %.4f)%s", symbol, old_price, buy_level, tag)
                             send_telegram(f"🔄 {symbol}: Buy bijgewerkt @ €{buy_level:.4f} (was €{old_price:.4f}){tag}")
@@ -554,9 +576,10 @@ def run_once():
                     buy_qty = _round_amount(exchange, symbol, qty)
                     buy_price = _round_price(exchange, symbol, buy_level)
                     try:
-                        if not dry_run:
-                            exchange.create_limit_buy_order(symbol, buy_qty, buy_price)
                         tag = " [DRY RUN]" if dry_run else ""
+                        if not dry_run:
+                            result = exchange.create_limit_buy_order(symbol, buy_qty, buy_price)
+                            bot_orders.setdefault(symbol, {})["buy"] = result["id"]
                         log.info("  %s: Limit buy @ €%.4f (€%.0f)%s", symbol, buy_level, capital_per, tag)
                         if not existing_buy:
                             send_telegram(f"📊 {symbol}: Limit buy @ €{buy_level:.4f} (€{capital_per:.0f}) geplaatst{tag}")
@@ -565,7 +588,7 @@ def run_once():
                         log.warning("  %s: Fout buy order: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
-    _save_state(entries=state_entries)
+    _save_state(entries=state_entries, bot_orders=bot_orders)
 
     trade_status = f"{new_trades} nieuwe trade(s) gevuld" if new_trades else "Geen nieuwe trades gevuld"
     summary = (
