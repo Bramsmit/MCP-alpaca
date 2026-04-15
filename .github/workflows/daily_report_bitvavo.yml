@@ -15,9 +15,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .alpaca_trade_state.json
-            trades.jsonl
-            .alpaca_day_state.json
+            .bitvavo_trade_state.json
+            bitvavo_trades.jsonl
+            .bitvavo_day_state.json
           key: bitvavo-state-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             bitvavo-state-${{ runner.os }}-
@@ -36,4 +36,4 @@ jobs:
           BITVAVO_DRY_RUN: ${{ secrets.BITVAVO_DRY_RUN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.BITVAVO_TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}
-        run: python -m bot.daily_report
+        run: python -m bot.bitvavo_daily_report
