@@ -399,14 +399,16 @@ def run_once():
     balance_eur = get_balance(exchange)
     positions = get_positions(exchange, symbols)
 
-    # 0.5% buffer voor afrondingsverschillen en Bitvavo order locking
-    effective_balance = min(balance_eur, MAX_CAPITAL_EUR) * 0.995
-    capital_per = effective_balance / len(symbols)
+    # Doelkapitaal per symbool op basis van MAX_CAPITAL_EUR (niet vrije balance).
+    # Replacement orders annuleren eerst (vrijmaken) en plaatsen daarna,
+    # dus het kapitaal is altijd tijdelijk beschikbaar.
+    # 0.5% buffer voor afrondingsverschillen en Bitvavo order locking.
+    capital_per = (MAX_CAPITAL_EUR / len(symbols)) * 0.995
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
     log.info("Geselecteerd: %s", ", ".join(symbols))
-    log.info("Vrij EUR: €%.2f | Effectief: €%.2f | Per asset: €%.2f", balance_eur, effective_balance, capital_per)
+    log.info("Vrij EUR: €%.2f | Max: €%.2f | Per asset: €%.2f", balance_eur, MAX_CAPITAL_EUR, capital_per)
     log.info("Levels: %s", levels)
     log.info("Prijzen: %s", current_prices)
     log.info("Posities: %s", positions)
