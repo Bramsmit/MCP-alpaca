@@ -399,7 +399,8 @@ def run_once():
     balance_eur = get_balance(exchange)
     positions = get_positions(exchange, symbols)
 
-    effective_balance = min(balance_eur, MAX_CAPITAL_EUR)
+    # 0.5% buffer voor afrondingsverschillen en Bitvavo order locking
+    effective_balance = min(balance_eur, MAX_CAPITAL_EUR) * 0.995
     capital_per = effective_balance / len(symbols)
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
