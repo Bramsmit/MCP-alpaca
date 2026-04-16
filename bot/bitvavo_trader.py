@@ -64,6 +64,9 @@ def get_exchange():
         "apiKey": api_key,
         "secret": secret,
         "enableRateLimit": True,
+        "options": {
+            "operatorId": 0,  # 0 = self-directed trading (geen broker/operator)
+        },
     })
     exchange.load_markets()
     return exchange, dry_run
