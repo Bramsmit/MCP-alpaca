@@ -1,4 +1,4 @@
-name: Trading Bot v2 — Dagrapport
+name: Trading Bot v2 — Hybrid Dagrapport
 
 on:
   schedule:
@@ -15,6 +15,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            .alpaca_hybrid_state.json
             .alpaca_trade_state.json
             trades.jsonl
             .alpaca_day_state.json
@@ -29,7 +30,7 @@ jobs:
       - name: Installeer dependencies
         run: pip install -r bot/requirements.txt
 
-      - name: Stuur dagelijks portfoliorapport v2
+      - name: Stuur dagelijks portfoliorapport v2 (hybrid)
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_V2_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_V2_SECRET_KEY }}

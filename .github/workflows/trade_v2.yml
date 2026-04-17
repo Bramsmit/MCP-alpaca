@@ -1,9 +1,13 @@
-name: Trading Bot v2 — Hourly
+name: Trading Bot v2 — Hybrid Hourly
 
 on:
   schedule:
     - cron: '0 * * * *'   # Elk uur op het hele uur
   workflow_dispatch:       # Handmatig starten via GitHub UI
+
+concurrency:
+  group: trade-v2
+  cancel-in-progress: false
 
 jobs:
   trade:
@@ -11,10 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Herstel state (orders + trades)
+      - name: Herstel state (hybrid + orders + trades)
         uses: actions/cache@v4
         with:
           path: |
+            .alpaca_hybrid_state.json
             .alpaca_trade_state.json
             trades.jsonl
             .alpaca_day_state.json
@@ -29,7 +34,7 @@ jobs:
       - name: Installeer dependencies
         run: pip install -r bot/requirements.txt
 
-      - name: Draai trading bot v2
+      - name: Draai hybrid bot v2
         id: trade
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_V2_API_KEY }}
@@ -37,11 +42,13 @@ jobs:
           ALPACA_PAPER_TRADE: ${{ secrets.ALPACA_V2_PAPER_TRADE }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.ALPACA_V2_TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.ALPACA_V2_TELEGRAM_CHAT_ID }}
-        run: python -m bot.live_trader
+          HYBRID_ENABLED: "true"
+          DRY_RUN: "false"
+        run: python -m bot.hybrid_trader
 
       - name: Melding bij fout
         if: failure()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.ALPACA_V2_TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.ALPACA_V2_TELEGRAM_CHAT_ID }}" \
-            -d "text=❌ Trading Bot v2 heeft gefaald. Check GitHub Actions voor details."
+            -d "text=❌ Hybrid bot v2 heeft gefaald. Check GitHub Actions voor details."

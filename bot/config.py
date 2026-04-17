@@ -50,3 +50,41 @@ STOP_LOSS_VALUES_TO_TEST = [0.01, 0.02, 0.03, 0.05, 0.10]  # voor backtest
 # Backtest
 BACKTEST_MONTHS = 3
 TIMEFRAME = "1Day"
+
+# ---------------------------------------------------------------------------
+# Hybrid regime-aware trader (additief; raakt live_trader.py niet)
+# ---------------------------------------------------------------------------
+
+# Master switch. Zolang False blijft gebruikt CI de bestaande range bot.
+# Kan overschreven worden via env var HYBRID_ENABLED=true.
+import os as _os_hybrid
+HYBRID_ENABLED = _os_hybrid.environ.get("HYBRID_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+
+# Timeframe voor regime-detectie, trend- en range-strategieën in het hybrid model.
+HYBRID_TIMEFRAME = "1Hour"
+
+# ADX / regime-detectie
+ADX_PERIOD = 14
+ADX_TREND_THRESHOLD = 25.0      # boven dit niveau = trending
+ADX_RANGE_THRESHOLD = 20.0      # onder dit niveau = ranging
+REGIME_CONFIRMATION_BARS = 2    # aantal candles bevestiging (hysteresis)
+
+# Trend-strategy
+EMA_FAST = 20
+EMA_SLOW = 50
+TREND_TRAILING_STOP_PCT = 0.05      # 5% trailing stop onder hoogste close sinds entry
+TREND_STOP_ATR_MULT = 2.0           # initiële hard stop = entry - 2 * ATR
+TREND_CROSSOVER_LOOKBACK_BARS = 3   # crossover mag max N bars oud zijn
+
+# Range-strategy (hourly variant)
+RANGE_LOOKBACK_HOURS = 72           # rolling window voor hourly range-levels
+RANGE_STOP_ATR_MULT = 1.0
+
+# Risk management (geldt voor beide strategieën)
+RISK_PER_TRADE_PCT = 0.01           # 1% van equity per trade
+
+# Safety: als True wordt geen order daadwerkelijk naar Alpaca gestuurd.
+# Kan via env variable overschreven worden (DRY_RUN=true/false).
+import os as _os
+DRY_RUN = _os.environ.get("DRY_RUN", "false").strip().lower() in ("1", "true", "yes", "on")
+
