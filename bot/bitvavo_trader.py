@@ -3,6 +3,9 @@
 Bitvavo range-trading bot via ccxt.
 Plaatst limit buy/sell orders op basis van rolling 3-daags high/low.
 Draait 1x per uur via GitHub Actions.
+
+Fees/spread/postOnly staan in bot/bitvavo_config.py. Optioneel: env BITVAVO_POST_ONLY=false
+om postOnly uit te zetten als de exchange orders weigert.
 """
 
 import json
@@ -35,6 +38,9 @@ from bot.bitvavo_config import (
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
+    ESTIMATED_ROUND_TRIP_FEE_PCT,
+    FEE_MAKER_PCT,
+    POST_ONLY_LIMIT_ORDERS,
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
     ORDER_STALE_PRICE_THRESHOLD,
@@ -42,6 +48,9 @@ from bot.bitvavo_config import (
 )
 from bot.telegram import send_telegram, notify_trade_filled
 from bot.journal import log_trade
+
+# Minimale bruto-spread = strategie-rand + geschatte round-trip fees (maker)
+_EFFECTIVE_MIN_SPREAD_PCT = MIN_SPREAD_PCT + ESTIMATED_ROUND_TRIP_FEE_PCT
 
 # Aparte state/journal bestanden voor Bitvavo (los van Alpaca)
 _BITVAVO_STATE_FILE = ".bitvavo_trade_state.json"
@@ -151,7 +160,7 @@ def get_24h_levels(exchange, symbols: list[str]) -> dict[str, tuple[float, float
             high = sum(bar[2] for bar in recent) / len(recent)
             buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
             sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-            if sell_level >= buy_level * (1 + MIN_SPREAD_PCT):
+            if sell_level >= buy_level * (1 + _EFFECTIVE_MIN_SPREAD_PCT):
                 result[symbol] = (buy_level, sell_level)
         except Exception as e:
             log.warning("get_24h_levels %s: %s", symbol, e)
@@ -171,7 +180,7 @@ def _get_levels_and_scores(exchange, symbols: list[str]) -> dict[str, tuple[floa
             high = sum(bar[2] for bar in recent) / len(recent)
             buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
             sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-            spread_ok = sell_level >= buy_level * (1 + MIN_SPREAD_PCT)
+            spread_ok = sell_level >= buy_level * (1 + _EFFECTIVE_MIN_SPREAD_PCT)
             spread_pct = (sell_level - buy_level) / buy_level if spread_ok else 0
             range_pct = (high - low) / low if low else 0
             score = spread_pct * (1 + range_pct)
@@ -268,6 +277,33 @@ def _round_price(exchange, symbol: str, price: float) -> float:
         return round(p, 2) if p >= 1 else round(p, 6)
 
 
+def _limit_order_params() -> dict:
+    """postOnly=True: Bitvavo annuleert als de limit direct zou matchen (maker fee)."""
+    po = os.environ.get("BITVAVO_POST_ONLY")
+    if po is not None and str(po).strip():
+        use_post_only = str(po).strip().lower() not in ("false", "0", "no")
+    else:
+        use_post_only = POST_ONLY_LIMIT_ORDERS
+    return {"postOnly": True} if use_post_only else {}
+
+
+def _order_size_ok(exchange, symbol: str, qty: float, price: float) -> tuple[bool, str]:
+    """Controleer ccxt market limits (min notional / min amount)."""
+    try:
+        m = exchange.market(symbol)
+        limits = m.get("limits") or {}
+        cost = qty * price
+        cmin = (limits.get("cost") or {}).get("min")
+        amin = (limits.get("amount") or {}).get("min")
+        if cmin is not None and float(cmin) > 0 and cost < float(cmin) - 1e-12:
+            return False, f"notional €{cost:.2f} < min €{float(cmin):.2f}"
+        if amin is not None and float(amin) > 0 and qty < float(amin) - 1e-12:
+            return False, f"qty {qty} < min {float(amin)}"
+    except Exception as e:
+        log.warning("order size check %s: %s", symbol, e)
+    return True, ""
+
+
 def _state_path() -> Path:
     return Path(__file__).resolve().parent.parent / _BITVAVO_STATE_FILE
 
@@ -348,7 +384,9 @@ def _check_and_notify_filled_trades(
                     entry = entries[symbol].get("entry", 0)
                     entry_price_for_log = entry if entry else None
                     if entry:
-                        profit = (price - entry) * qty
+                        buy_fee = entry * qty * FEE_MAKER_PCT
+                        sell_fee = price * qty * FEE_MAKER_PCT
+                        profit = (price - entry) * qty - buy_fee - sell_fee
                     del entries[symbol]
                 elif side == "buy":
                     entries[symbol] = {"qty": qty, "entry": price}
@@ -408,6 +446,13 @@ def run_once():
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
     log.info("Geselecteerd: %s", ", ".join(symbols))
+    log.info(
+        "Fees/spread: maker %.2f%%/zijde | effectieve min. spread %.2f%% (strategie %.2f%% + round-trip fees %.2f%%)",
+        FEE_MAKER_PCT * 100,
+        _EFFECTIVE_MIN_SPREAD_PCT * 100,
+        MIN_SPREAD_PCT * 100,
+        ESTIMATED_ROUND_TRIP_FEE_PCT * 100,
+    )
     log.info("Vrij EUR: €%.2f | Max: €%.2f | Per asset: €%.2f", balance_eur, MAX_CAPITAL_EUR, capital_per)
     log.info("Levels: %s", levels)
     log.info("Prijzen: %s", current_prices)
@@ -508,18 +553,26 @@ def run_once():
                 else:
                     sell_qty = _round_amount(exchange, symbol, free_qty)
                     sell_price = _round_price(exchange, symbol, limit_sell)
-                    try:
-                        tag = " [DRY RUN]" if dry_run else ""
-                        if not dry_run:
-                            result = exchange.create_limit_sell_order(symbol, sell_qty, sell_price)
-                            bot_orders.setdefault(symbol, {})["sell"] = result["id"]
-                        log.info("  %s: Sell limit @ €%.4f (qty=%.6f)%s", symbol, limit_sell, sell_qty, tag)
-                        if not existing_sell:
-                            send_telegram(f"📊 {symbol}: Sell limit @ €{limit_sell:.4f} geplaatst{tag}")
-                            stats["placed"] += 1
-                    except Exception as e:
-                        log.warning("  %s: Fout sell order: %s", symbol, e)
-                        send_telegram(f"❌ {symbol}: Fout sell order: {e}")
+                    ok_sz, sz_reason = _order_size_ok(exchange, symbol, sell_qty, sell_price)
+                    if not ok_sz:
+                        log.warning("  %s: Sell overgeslagen: %s", symbol, sz_reason)
+                        stats["skipped"] += 1
+                    else:
+                        try:
+                            tag = " [DRY RUN]" if dry_run else ""
+                            lim_params = _limit_order_params()
+                            if not dry_run:
+                                result = exchange.create_limit_sell_order(
+                                    symbol, sell_qty, sell_price, params=lim_params
+                                )
+                                bot_orders.setdefault(symbol, {})["sell"] = result["id"]
+                            log.info("  %s: Sell limit @ €%.4f (qty=%.6f)%s", symbol, limit_sell, sell_qty, tag)
+                            if not existing_sell:
+                                send_telegram(f"📊 {symbol}: Sell limit @ €{limit_sell:.4f} geplaatst{tag}")
+                                stats["placed"] += 1
+                        except Exception as e:
+                            log.warning("  %s: Fout sell order: %s", symbol, e)
+                            send_telegram(f"❌ {symbol}: Fout sell order: {e}")
         else:
             if capital_per < 10:
                 log.info("  %s: Te weinig kapitaal (€%.2f, min €10), skip", symbol, capital_per)
@@ -585,18 +638,28 @@ def run_once():
                     qty = capital_per / buy_level
                     buy_qty = _round_amount(exchange, symbol, qty)
                     buy_price = _round_price(exchange, symbol, buy_level)
-                    try:
-                        tag = " [DRY RUN]" if dry_run else ""
-                        if not dry_run:
-                            result = exchange.create_limit_buy_order(symbol, buy_qty, buy_price)
-                            bot_orders.setdefault(symbol, {})["buy"] = result["id"]
-                        log.info("  %s: Limit buy @ €%.4f (€%.0f)%s", symbol, buy_level, capital_per, tag)
-                        if not existing_buy:
-                            send_telegram(f"📊 {symbol}: Limit buy @ €{buy_level:.4f} (€{capital_per:.0f}) geplaatst{tag}")
-                            stats["placed"] += 1
-                    except Exception as e:
-                        log.warning("  %s: Fout buy order: %s", symbol, e)
-                        send_telegram(f"❌ {symbol}: Fout buy order: {e}")
+                    ok_sz, sz_reason = _order_size_ok(exchange, symbol, buy_qty, buy_price)
+                    if not ok_sz:
+                        log.warning("  %s: Buy overgeslagen: %s", symbol, sz_reason)
+                        stats["skipped"] += 1
+                    else:
+                        try:
+                            tag = " [DRY RUN]" if dry_run else ""
+                            lim_params = _limit_order_params()
+                            if not dry_run:
+                                result = exchange.create_limit_buy_order(
+                                    symbol, buy_qty, buy_price, params=lim_params
+                                )
+                                bot_orders.setdefault(symbol, {})["buy"] = result["id"]
+                            log.info("  %s: Limit buy @ €%.4f (€%.0f)%s", symbol, buy_level, capital_per, tag)
+                            if not existing_buy:
+                                send_telegram(
+                                    f"📊 {symbol}: Limit buy @ €{buy_level:.4f} (€{capital_per:.0f}) geplaatst{tag}"
+                                )
+                                stats["placed"] += 1
+                        except Exception as e:
+                            log.warning("  %s: Fout buy order: %s", symbol, e)
+                            send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
     _save_state(entries=state_entries, bot_orders=bot_orders)
 

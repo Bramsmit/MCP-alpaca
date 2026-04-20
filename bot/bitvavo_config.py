@@ -22,7 +22,18 @@ CAPITAL_PER_ASSET = MAX_CAPITAL_EUR / SYMBOLS_ACTIVE
 LEVELS_LOOKBACK_DAYS = 3
 BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de gem. low
 SELL_BELOW_HIGH_PCT = 0.02  # 2% onder de gem. high
-MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop
+MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop (bruto)
+
+# Bitvavo fees (pas aan naar je tier op bitvavo.com/fees). Gebruikt voor:
+# - strengere pair-selectie: bruto-spread moet ook fees dekken
+# - Telegram/journal PnL-schatting op sell (maker beide zijden)
+FEE_MAKER_PCT = 0.0015      # 0,15% — typische startfee EUR-markten cat. A
+FEE_TAKER_PCT = 0.0025      # 0,25% — alleen ter referentie / logging
+# Round-trip bij passieve limits: koop + verkoop als maker
+ESTIMATED_ROUND_TRIP_FEE_PCT = FEE_MAKER_PCT * 2
+
+# Limit orders: postOnly=True houdt maker-tarief; order wordt geannuleerd als hij taker zou zijn
+POST_ONLY_LIMIT_ORDERS = True
 
 STOP_LOSS_PER_UNIT = 0.01
 
