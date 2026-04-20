@@ -3,17 +3,17 @@
 Trade rapport: laad trades.jsonl en toon statistieken.
 
 Gebruik:
-    python -m bot.report            # console output (laatste 7 dagen)
-    python -m bot.report --days 30  # laatste 30 dagen
-    python -m bot.report --telegram # stuur ook naar Telegram
-    python -m bot.report --all      # alle trades ooit
+    python -m bot_live.report            # console (laatste 7 dagen)
+    python -m bot_live.report --days 30
+    python -m bot_live.report --telegram
+    python -m bot_live.report --all
 """
 
 import sys
 from datetime import datetime, timedelta, timezone
 
-from bot.journal import load_trades
-from bot.telegram import send_telegram
+from bot_live.journal import load_trades
+from bot_live.telegram import send_telegram
 
 
 def _parse_args():

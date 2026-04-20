@@ -38,8 +38,8 @@ if env_path.exists():
 
 import pandas as pd
 
-from bot import range_strategy, trend_strategy
-from bot.config import (
+from bot_hybrid import range_strategy, trend_strategy
+from bot_live.config import (
     SYMBOLS,
     START_CAPITAL,
     CAPITAL_PER_ASSET,
@@ -52,8 +52,8 @@ from bot.config import (
     EMA_SLOW,
     RANGE_LOOKBACK_HOURS,
 )
-from bot.market_regime_detector import detect_regime
-from bot.strategy_base import StrategyContext, StrategySignal
+from bot_hybrid.market_regime_detector import detect_regime
+from bot_hybrid.strategy_base import StrategyContext, StrategySignal
 
 
 Mode = Literal["range_only", "trend_only", "hybrid"]

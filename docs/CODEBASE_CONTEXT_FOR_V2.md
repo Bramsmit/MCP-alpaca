@@ -22,18 +22,20 @@ Gebruik dit bestand als **projectcontext** in een nieuwe Cursor-workspace of om 
 
 | Pad | Rol |
 |-----|-----|
-| `bot/config.py` | Strategie-constanten (pool, N actief, percentages, order-drempels). |
-| `bot/live_trader.py` | Kern: `run_once()`, Alpaca-clients, selectie, plaatsen/updaten orders, state/journal-hooks. |
-| `bot/run_loop.py` | Optioneel: eindeloze lus (standaard elk uur) die `run_once()` aanroept. |
-| `bot/journal.py` | Append **gevulde trades** naar `trades.jsonl` (JSON-lines). |
-| `bot/report.py` | Leest `trades.jsonl`, bouwt statistieken (CLI + optioneel Telegram). |
-| `bot/telegram.py` | Telegram Bot API voor meldingen. |
-| `bot/backtest.py`, `bot/backtest_all.py` | Historische simulatie (los van live loop). |
-| `bot/status.py` | Status / diagnostiek. |
-| `bot/daily_report.py` | Geplande rapportage (zie workflows). |
-| `bot/cancel_all_orders.py` | Annuleer alle open orders (paper). |
-| `bot/export_handoff.py` | **Genereert** `exports/alpaca_range_bot_v1_handoff_*.{json,md}` — zie §7. |
-| `.github/workflows/trade.yml` | Elk uur: checkout, **cache** van `trades.jsonl` + `.alpaca_trade_state.json`, `python -m bot.live_trader`. |
+| `bot_live/config.py` | Strategie-constanten (range + hybrid), Bitvavo fee-constants, order-drempels. |
+| `bot_range_1000/live_trader.py` | Range-bot: `run_once()`, Alpaca-clients, orders, state/journal-hooks. |
+| `bot_range_1000/backtest.py`, `backtest_all.py` | Historische simulatie range-strategie. |
+| `bot_range_1000/export_handoff.py` | Handoff JSON/MD — zie §7. |
+| `bot_hybrid/hybrid_trader.py` | Hybrid regime-trader (hourly); deelt Alpaca-helpers met range. |
+| `bot_hybrid/` | `range_strategy`, `trend_strategy`, `market_regime_detector`, `indicators`, enz. |
+| `bot_live/run_loop.py` | Eindeloze lus die `bot_range_1000.live_trader.run_once()` aanroept. |
+| `bot_live/journal.py` | Append **gevulde trades** naar `trades.jsonl` (JSON-lines). |
+| `bot_live/report.py` | Statistieken uit `trades.jsonl`. |
+| `bot_live/telegram.py` | Telegram Bot API. |
+| `bot_live/daily_report.py`, `bitvavo_*.py` | Rapportage / Bitvavo-runner. |
+| `bot_live/status.py` | Status / diagnostiek (Alpaca). |
+| `bot_live/cancel_all_orders.py` | Hulp voor orders (legacy Kraken-tekst in docstring mogelijk). |
+| `.github/workflows/trade.yml` | Elk uur: cache state, `python -m bot_range_1000.live_trader`. |
 | `.github/workflows/daily_report.yml`, `daily_status.yml` | Overige automatisering. |
 | `docs/DEPLOY.md`, `docs/GITHUB_SETUP.md` | Deploy / GitHub. |
 | `trades.jsonl` | **Lokaal / CI-cache:** één JSON-object per regel per gedetecteerde fill (gitignored). |
@@ -43,15 +45,16 @@ Gebruik dit bestand als **projectcontext** in een nieuwe Cursor-workspace of om 
 
 ## 3. Entry points
 
-- **Eén run (zoals CI):** `python -m bot.live_trader`
-- **Continu op server:** `python -m bot.run_loop` of `bot/run_live.sh`
-- **Handoff genereren:** `python -m bot.export_handoff`
+- **Range (zoals CI):** `python -m bot_range_1000.live_trader`
+- **Hybrid v2:** `python -m bot_hybrid.hybrid_trader`
+- **Continu op server:** `python -m bot_live.run_loop` of `bot_range_1000/run_live.sh`
+- **Handoff genereren:** `python -m bot_range_1000.export_handoff`
 
 Clients worden in `live_trader.get_trading_clients()` met **`paper=True`** aangemaakt. Live gaan = **live API-keys** + **`paper=False`** (bij voorkeur via environment variable i.p.v. hardcoded).
 
 ---
 
-## 4. Belangrijke configuratie (`bot/config.py`)
+## 4. Belangrijke configuratie (`bot_live/config.py`)
 
 - `SYMBOL_POOL` — lijst crypto-paren (Alpaca-notatie `BASE/USD`).
 - `SYMBOLS_ACTIVE` — hoeveel symbolen tegelijk actief (nu3).
@@ -90,9 +93,9 @@ Genereer een **JSON** (machineleesbaar) + **Markdown** (leesbaar) met dezelfde t
 
 ```bash
 cd /path/to/MCP-alpaca
-python -m bot.export_handoff
+python -m bot_range_1000.export_handoff
 # optioneel:
-python -m bot.export_handoff --output-dir exports --max-trades-md 80
+python -m bot_range_1000.export_handoff --output-dir exports --max-trades-md 80
 ```
 
 Uitvoer (voorbeeld):
@@ -103,7 +106,7 @@ Uitvoer (voorbeeld):
 **Inhoud (concept):**
 
 - `meta` — generator, tijd, pad naar repo
-- `config_snapshot` — relevante constanten uit `bot.config`
+- `config_snapshot` — relevante constanten uit `bot_live.config`
 - `trades` — volledige lijst uit `trades.jsonl` (als bestand bestaat)
 - `trade_summary` — aantallen, win rate, totaal profit (indien sells met profit)
 - `state_summary` — of state bestaat, aantal symbols in entries, aantal notified IDs (geen volledige order-id dump verplicht; zie JSON)
@@ -129,6 +132,6 @@ Zo heeft het model **architectuur + jouw historische trades + instellingen** zon
 
 ## 9. Gerelateerde docs in repo
 
-- `README.md`, `bot/README.md`, `SETUP_GUIDE.md`
+- `README.md`, `bot_range_1000/README.md`, `SETUP_GUIDE.md`
 - `docs/ALPACA_CRYPTO_LIMITATIONS.md`
 - `docs/DEPLOY.md`, `docs/GITHUB_SETUP.md`

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Test of Telegram notificaties werken.
-Run: python bot/test_telegram.py
-(of: cd MCP-alpaca && python -m bot.test_telegram)
+Run: python -m bot_live.test_telegram
+(of: cd MCP-alpaca && python -m bot_live.test_telegram)
 """
 
 import os
@@ -18,7 +18,7 @@ if env_path.exists():
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
-from bot.telegram import send_telegram
+from bot_live.telegram import send_telegram
 
 if __name__ == "__main__":
     print("Versturen testbericht naar Telegram...")

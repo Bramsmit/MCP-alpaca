@@ -31,7 +31,7 @@ from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoBarsRequest, CryptoLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
 
-from bot.config import (
+from bot_live.config import (
     SYMBOL_POOL,
     SYMBOLS_ACTIVE,
     CAPITAL_PER_ASSET,
@@ -48,8 +48,8 @@ from bot.config import (
     ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
     ORDER_REPLACE_DELAY_SEC,
 )
-from bot.telegram import send_telegram, notify_trade, notify_trade_filled
-from bot.journal import log_trade
+from bot_live.telegram import send_telegram, notify_trade, notify_trade_filled
+from bot_live.journal import log_trade
 
 
 def get_trading_clients():

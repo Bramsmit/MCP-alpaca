@@ -18,7 +18,7 @@ if env_path.exists():
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
 import pandas as pd
-from bot.config import (
+from bot_live.config import (
     SYMBOL_POOL,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
@@ -26,7 +26,7 @@ from bot.config import (
     STOP_LOSS_PER_UNIT,
     CAPITAL_PER_ASSET,
 )
-from bot.backtest import fetch_data, run_backtest
+from bot_range_1000.backtest import fetch_data, run_backtest
 
 
 def main():

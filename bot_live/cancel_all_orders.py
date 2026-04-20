@@ -15,7 +15,7 @@ if env_path.exists():
 
 import ccxt
 
-from bot.config import SYMBOL_POOL
+from bot_live.config import SYMBOL_POOL
 
 
 def main():

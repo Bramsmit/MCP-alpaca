@@ -25,7 +25,7 @@ from typing import Literal
 
 import pandas as pd
 
-from bot.indicators import adx as adx_indicator, ema
+from bot_hybrid.indicators import adx as adx_indicator, ema
 
 
 Regime = Literal["TRENDING_UP", "TRENDING_DOWN", "RANGING", "UNCERTAIN"]

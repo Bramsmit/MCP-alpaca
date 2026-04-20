@@ -5,7 +5,7 @@ Stuur berichten via de Telegram Bot API.
 
 import os
 
-from bot.config import BITVAVO_FEE_BUY_RATE
+from bot_live.config import BITVAVO_FEE_BUY_RATE
 
 try:
     import requests
@@ -26,7 +26,7 @@ def send_telegram(message: str) -> bool:
         return False
 
     if chat_id == "VUL_HIER_JE_CHAT_ID_IN":
-        print("⚠️ Vul TELEGRAM_CHAT_ID in .env in (zie bot/README.md)")
+        print("⚠️ Vul TELEGRAM_CHAT_ID in .env in (zie bot_range_1000/README.md)")
         return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"

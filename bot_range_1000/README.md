@@ -1,26 +1,28 @@
-# Trading Bot
+# Range bot (Alpaca, ~1000 EUR logica)
+
+Code staat onder `bot_range_1000/`. Gedeelde config, Telegram en journal: `bot_live/`.
 
 ## Backtest
 
 ```bash
-python -m bot.backtest
+python -m bot_range_1000.backtest
 ```
 
 ## Context voor v2 / Cursor (architectuur + trade-handoff)
 
 - Overzicht: [docs/CODEBASE_CONTEXT_FOR_V2.md](../docs/CODEBASE_CONTEXT_FOR_V2.md)
-- Export (JSON + MD, geen API keys): `python -m bot.export_handoff` → bestanden in `exports/`
+- Export (JSON + MD, geen API keys): `python -m bot_range_1000.export_handoff` → bestanden in `exports/`
 
 ## Live Paper Trading
 
 ```bash
-python -m bot.live_trader
+python -m bot_range_1000.live_trader
 ```
 
 ### Alle orders annuleren
 
 ```bash
-python -m bot.cancel_all_orders
+python -m bot_live.cancel_all_orders
 ```
 
 ### Op een server draaien
@@ -31,13 +33,13 @@ Zie [docs/DEPLOY.md](../docs/DEPLOY.md) voor VPS, GitHub Actions, of Railway.
 
 ```bash
 # Elke dag om 9:00
-0 9 * * * cd /Users/bramsmits/Documents/Cursor/Hobby/MCP-alpaca && python3 -m bot.live_trader
+0 9 * * * cd /Users/bramsmits/Documents/Cursor/Hobby/MCP-alpaca && python3 -m bot_range_1000.live_trader
 ```
 
 Of vaker (bijv. elk uur) voor snellere order-updates:
 
 ```bash
-0 * * * * cd /path/to/MCP-alpaca && python3 -m bot.live_trader
+0 * * * * cd /path/to/MCP-alpaca && python3 -m bot_range_1000.live_trader
 ```
 
 ### Configuratie
@@ -72,13 +74,13 @@ De bot draait elk uur via `.github/workflows/trade.yml`. Secrets: ALPACA_API_KEY
 
 ```bash
 cd /Users/bramsmits/Documents/Cursor/Hobby/MCP-alpaca
-python -m bot.test_telegram
+python -m bot_live.test_telegram
 ```
 
 ### 3. Gebruik in je trading script
 
 ```python
-from bot.telegram import send_telegram, notify_trade
+from bot_live.telegram import send_telegram, notify_trade
 
 # Simpel bericht
 send_telegram("Order geplaatst!")

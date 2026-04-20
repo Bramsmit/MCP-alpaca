@@ -7,8 +7,8 @@ Leest uit projectroot (indien aanwezig):
 
 Bevat GEEN API keys. Draai vanaf repo-root:
 
-  python -m bot.export_handoff
-  python -m bot.export_handoff --output-dir exports --max-trades-md 100
+  python -m bot_range_1000.export_handoff
+  python -m bot_range_1000.export_handoff --output-dir exports --max-trades-md 100
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def _load_state_summary(path: Path) -> dict | None:
 
 
 def _config_snapshot() -> dict:
-    import bot.config as c
+    import bot_live.config as c
 
     keys = [
         "SYMBOL_POOL",
@@ -221,7 +221,7 @@ def main() -> None:
     stamp = _utc_stamp()
     base = f"alpaca_range_bot_v1_handoff_{stamp}"
 
-    from bot.journal import load_trades
+    from bot_live.journal import load_trades
 
     trades_path = ROOT / "trades.jsonl"
     state_path = ROOT / ".alpaca_trade_state.json"
@@ -229,7 +229,7 @@ def main() -> None:
     trades = load_trades()
     payload = {
         "meta": {
-            "generator": "bot.export_handoff",
+            "generator": "bot_range_1000.export_handoff",
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "repo_root": str(ROOT),
             "source_files": {

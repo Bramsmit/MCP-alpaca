@@ -4,7 +4,7 @@ Bitvavo range-trading bot via ccxt.
 Plaatst limit buy/sell orders op basis van rolling 3-daags high/low.
 Draait 1x per uur via GitHub Actions.
 
-Fees/spread/postOnly staan in bot/bitvavo_config.py. Optioneel: env BITVAVO_POST_ONLY=false
+Fees/spread/postOnly staan in bot_live/bitvavo_config.py. Optioneel: env BITVAVO_POST_ONLY=false
 om postOnly uit te zetten als de exchange orders weigert.
 """
 
@@ -30,7 +30,7 @@ if env_path.exists():
 
 import ccxt
 
-from bot.bitvavo_config import (
+from bot_live.bitvavo_config import (
     SYMBOL_POOL,
     SYMBOLS_ACTIVE,
     MAX_CAPITAL_EUR,
@@ -46,8 +46,8 @@ from bot.bitvavo_config import (
     ORDER_STALE_PRICE_THRESHOLD,
     ORDER_REPLACE_DELAY_SEC,
 )
-from bot.telegram import send_telegram, notify_trade_filled
-from bot.journal import log_trade
+from bot_live.telegram import send_telegram, notify_trade_filled
+from bot_live.journal import log_trade
 
 # Minimale bruto-spread = strategie-rand + geschatte round-trip fees (maker)
 _EFFECTIVE_MIN_SPREAD_PCT = MIN_SPREAD_PCT + ESTIMATED_ROUND_TRIP_FEE_PCT

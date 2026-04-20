@@ -10,7 +10,7 @@ Pipeline per run:
     5. Persist per-symbol regime + highest-close-since-entry in
        `.alpaca_hybrid_state.json`.
 
-Dit bestand vervangt `bot/live_trader.py` NIET. Live CI blijft de dagelijkse
+Dit bestand vervangt `bot_range_1000/live_trader.py` niet. Live CI blijft de
 range bot draaien totdat HYBRID_ENABLED=True gezet wordt.
 """
 
@@ -43,8 +43,8 @@ from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
 from alpaca.trading.requests import LimitOrderRequest
 
-from bot import range_strategy, trend_strategy
-from bot.config import (
+from bot_hybrid import range_strategy, trend_strategy
+from bot_live.config import (
     SYMBOL_POOL,
     SYMBOLS_ACTIVE,
     CAPITAL_PER_ASSET,
@@ -61,7 +61,7 @@ from bot.config import (
     ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
     DRY_RUN,
 )
-from bot.live_trader import (
+from bot_range_1000.live_trader import (
     get_trading_clients,
     get_current_prices,
     get_positions,
@@ -75,13 +75,13 @@ from bot.live_trader import (
     _check_and_notify_filled_orders,
     MIN_SELLABLE_CRYPTO_QTY,
 )
-from bot.market_regime_detector import (
+from bot_hybrid.market_regime_detector import (
     RegimeSnapshot,
     detect_regime,
     get_prev_regime,
 )
-from bot.strategy_base import StrategyContext, StrategySignal
-from bot.telegram import send_telegram
+from bot_hybrid.strategy_base import StrategyContext, StrategySignal
+from bot_live.telegram import send_telegram
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +291,7 @@ def _log_regime_line(symbol: str, snap: RegimeSnapshot, strategy: str, exec_stat
 def run_once() -> dict:
     """Eén run van de hybride bot."""
     if not HYBRID_ENABLED:
-        log.info("HYBRID_ENABLED=False -> hybrid bot niet actief (zet in bot/config.py)")
+        log.info("HYBRID_ENABLED=False -> hybrid bot niet actief (zet in bot_live/config.py)")
         return {"skipped": "hybrid_disabled"}
 
     trading_client, data_client = get_trading_clients()

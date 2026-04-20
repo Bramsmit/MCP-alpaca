@@ -152,12 +152,11 @@ Gebruik dit document om een nieuwe bot op te zetten. Doe het volgende:
 
 1. **Maak een nieuwe GitHub repo aan** (bijv. `crypto-bot-rsi` of `crypto-bot-dip`)
 2. **Gebruik de structuur van de Bitvavo bot** als template:
-   - `bot/trader.py` — hoofdlogica
-   - `bot/config.py` — strategie parameters
-   - `bot/telegram.py` — notificaties (zelfde als bestaande bot)
-   - `bot/journal.py` — trade logging (zelfde als bestaande bot)
-   - `bot/daily_report.py` — dagrapport
-   - `bot/requirements.txt` — dependencies
+   - `bot_range_1000/live_trader.py` of `bot_hybrid/hybrid_trader.py` — voorbeeld entrypoints
+   - `bot_live/config.py` — strategie parameters (gedeeld)
+   - `bot_live/telegram.py`, `bot_live/journal.py` — notificaties / logging
+   - `bot_live/daily_report.py` — dagrapport
+   - `bot_live/requirements.txt` — dependencies
 3. **GitHub Actions** (3 workflows):
    - `trade.yml` — hourly (of daily voor EMA trend bot)
    - `daily_report.yml` — 20:00 UTC

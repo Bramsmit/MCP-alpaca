@@ -33,7 +33,7 @@ git clone https://github.com/JOUW-USER/MCP-alpaca.git
 cd MCP-alpaca
 
 # Dependencies
-pip3 install -r bot/requirements.txt
+pip3 install -r bot_live/requirements.txt
 pip3 install alpaca-py pandas requests
 
 # .env aanmaken (kopieer van je Mac)
@@ -50,14 +50,14 @@ crontab -e
 Voeg toe:
 
 ```
-0 * * * * cd /opt/MCP-alpaca && python3 -m bot.live_trader >> /var/log/alpaca-bot.log 2>&1
+0 * * * * cd /opt/MCP-alpaca && python3 -m bot_range_1000.live_trader >> /var/log/alpaca-bot.log 2>&1
 ```
 
 ### Of: continu draaien met run_loop
 
 ```bash
 cd /opt/MCP-alpaca
-nohup python3 -m bot.run_loop >> /var/log/alpaca-bot.log 2>&1 &
+nohup python3 -m bot_live.run_loop >> /var/log/alpaca-bot.log 2>&1 &
 ```
 
 ---
@@ -81,7 +81,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install alpaca-py pandas requests
-      - run: python -m bot.live_trader
+      - run: python -m bot_range_1000.live_trader
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
@@ -98,8 +98,8 @@ Voeg secrets toe: **Settings → Secrets → Actions**
 1. Push project naar GitHub
 2. Maak account op [Railway](https://railway.app) of [Render](https://render.com)
 3. Nieuwe service → "Background Worker"
-4. Build: `pip install -r bot/requirements.txt`
-5. Start: `python -m bot.run_loop`
+4. Build: `pip install -r bot_live/requirements.txt`
+5. Start: `python -m bot_live.run_loop`
 6. Environment variables: ALPACA_API_KEY, etc.
 
 ---

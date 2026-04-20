@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Draai de live trader continu: elke INTERVAL_MINUTEN minuten.
-Gebruik op een server met: nohup python3 -m bot.run_loop &
+Gebruik op een server met: nohup python3 -m bot_live.run_loop &
 Stuurt automatisch een dagrapport (start vs. einde + winst/verlies) om DAGRAPPORT_UUR.
 """
 
@@ -19,9 +19,9 @@ sys.path.insert(0, str(ROOT))
 INTERVAL_MINUTEN = 60   # Elk uur
 DAGRAPPORT_UUR = 22     # Lokale tijd: 22:00 stuur dagrapport
 
-from bot.live_trader import run_once, get_trading_clients, get_portfolio_value
-from bot.telegram import send_telegram
-from bot.daily_report import send_daily_report, save_day_start, load_day_start
+from bot_range_1000.live_trader import run_once, get_trading_clients, get_portfolio_value
+from bot_live.telegram import send_telegram
+from bot_live.daily_report import send_daily_report, save_day_start, load_day_start
 
 
 def _init_day_start(trading_client) -> None:

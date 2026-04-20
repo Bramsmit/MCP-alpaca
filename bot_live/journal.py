@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bot.config import BITVAVO_FEE_BUY_RATE
+from bot_live.config import BITVAVO_FEE_BUY_RATE
 
 log = logging.getLogger(__name__)
 

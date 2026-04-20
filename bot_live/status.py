@@ -19,45 +19,45 @@ if env_path.exists():
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
-from bot.live_trader import (
-    get_exchange,
+from alpaca.trading.enums import OrderSide
+
+from bot_range_1000.live_trader import (
+    get_trading_clients,
     select_top_symbols,
     get_current_prices,
     get_positions,
     get_open_orders,
-    get_balance,
     get_portfolio_value,
+    get_buying_power,
 )
-from bot.config import SYMBOL_POOL, SYMBOLS_ACTIVE, MAX_CAPITAL_EUR
+from bot_live.config import SYMBOL_POOL, SYMBOLS_ACTIVE
 
 
 def main():
     print("=" * 60)
-    print("Kraken Range Trader — Status / Diagnose")
+    print("Alpaca Range Bot — Status / Diagnose")
     print("=" * 60)
 
-    exchange, dry_run = get_exchange()
-    if dry_run:
-        print("⚠️  DRY RUN MODE")
-
-    symbols, levels = select_top_symbols(exchange, SYMBOL_POOL, SYMBOLS_ACTIVE)
+    trading_client, data_client = get_trading_clients()
+    symbols, levels = select_top_symbols(
+        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE
+    )
 
     if not symbols:
         print("Geen symbolen geselecteerd uit pool")
         return
 
     print(f"\nGeselecteerd: {', '.join(symbols)}")
-    balance_eur = get_balance(exchange)
-    portfolio_value = get_portfolio_value(exchange)
-    positions = get_positions(exchange, symbols)
+    cash = get_buying_power(trading_client)
+    portfolio_value = get_portfolio_value(trading_client)
+    positions = get_positions(trading_client, symbols=symbols)
 
-    print(f"Vrij EUR:        €{balance_eur:.2f}")
-    print(f"Max kapitaal:    €{MAX_CAPITAL_EUR:.2f}")
-    print(f"Portfolio waarde: €{portfolio_value:.2f}")
+    print(f"Cash:              ${cash:.2f}")
+    print(f"Portfolio (equity): ${portfolio_value:.2f}")
     print(f"Posities: {positions or 'Geen'}")
     print()
 
-    current_prices = get_current_prices(exchange, symbols)
+    current_prices = get_current_prices(data_client, symbols)
 
     print("Prijs vs buy/sell levels:")
     print("-" * 60)
@@ -67,21 +67,28 @@ def main():
         buy_level, sell_level = levels[sym]
         price = current_prices[sym]
         pct_to_buy = (price - buy_level) / buy_level * 100
-        pos_qty = positions.get(sym, 0)
-        status = f"HAS POSITION ({pos_qty:.6f})" if pos_qty > 0 else f"buy {pct_to_buy:+.1f}% away"
-        print(f"  {sym:12} €{price:.4f}  buy €{buy_level:.4f}  sell €{sell_level:.4f}  → {status}")
+        pos_qty, _ = positions.get(sym, (0.0, 0.0))
+        status = (
+            f"HAS POSITION ({pos_qty:.6f})"
+            if pos_qty > 0
+            else f"buy {pct_to_buy:+.1f}% away"
+        )
+        print(
+            f"  {sym:12} ${price:.4f}  buy ${buy_level:.4f}  "
+            f"sell ${sell_level:.4f}  → {status}"
+        )
 
     print()
     print("Open orders:")
     print("-" * 60)
     found_any = False
     for sym in symbols:
-        orders = get_open_orders(exchange, sym)
+        orders = get_open_orders(trading_client, sym)
         for o in orders:
-            side = o.get("side", "?").upper()
-            px = o.get("price", "?")
-            amt = o.get("amount", "?")
-            print(f"  {sym} {side} {amt} @ €{px}")
+            side = "BUY" if o.side == OrderSide.BUY else "SELL"
+            px = getattr(o, "limit_price", None) or getattr(o, "stop_price", "?")
+            amt = getattr(o, "qty", "?")
+            print(f"  {sym} {side} {amt} @ {px}")
             found_any = True
     if not found_any:
         print("  Geen open orders")

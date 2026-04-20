@@ -21,7 +21,7 @@ if env_path.exists():
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
 import pandas as pd
-from bot.config import (
+from bot_live.config import (
     SYMBOLS,
     START_CAPITAL,
     CAPITAL_PER_ASSET,

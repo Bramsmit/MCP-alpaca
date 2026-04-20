@@ -1,7 +1,7 @@
 """
 Range-strategie, hourly variant voor het hybrid model.
 
-Identieke logica als de daily range-bot in `bot/live_trader.py`, maar:
+Identieke logica als de daily range-bot in `bot_range_1000/live_trader.py`, maar:
     - Levels uit de laatste RANGE_LOOKBACK_HOURS hourly candles
     - Stop-loss via ATR (i.p.v. vaste $/unit zoals op daily)
     - Retourneert een StrategySignal; de orchestrator voert het uit.
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from bot.config import (
+from bot_live.config import (
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
@@ -23,9 +23,9 @@ from bot.config import (
     RISK_PER_TRADE_PCT,
     ADX_PERIOD,
 )
-from bot.indicators import atr as atr_indicator
-from bot.risk_manager import position_size, range_stop_profile
-from bot.strategy_base import StrategyContext, StrategySignal
+from bot_hybrid.indicators import atr as atr_indicator
+from bot_hybrid.risk_manager import position_size, range_stop_profile
+from bot_hybrid.strategy_base import StrategyContext, StrategySignal
 
 
 def compute_hourly_levels(df: pd.DataFrame, lookback: int = RANGE_LOOKBACK_HOURS) -> tuple[float, float, float] | None:

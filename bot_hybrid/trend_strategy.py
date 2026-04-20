@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from bot.config import (
+from bot_live.config import (
     EMA_FAST,
     EMA_SLOW,
     ADX_PERIOD,
@@ -28,9 +28,9 @@ from bot.config import (
     TREND_CROSSOVER_LOOKBACK_BARS,
     RISK_PER_TRADE_PCT,
 )
-from bot.indicators import adx as adx_indicator, atr as atr_indicator, ema
-from bot.risk_manager import position_size, trend_stop_profile, trailing_stop_price
-from bot.strategy_base import StrategyContext, StrategySignal
+from bot_hybrid.indicators import adx as adx_indicator, atr as atr_indicator, ema
+from bot_hybrid.risk_manager import position_size, trend_stop_profile, trailing_stop_price
+from bot_hybrid.strategy_base import StrategyContext, StrategySignal
 
 
 def _recent_golden_cross(fast: pd.Series, slow: pd.Series, lookback: int) -> bool:

@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r bot/requirements.txt
+        run: pip install -r bot_live/requirements.txt
 
       - name: Run trading bot
         id: trade
@@ -30,7 +30,7 @@ jobs:
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python -m bot.live_trader
+        run: python -m bot_range_1000.live_trader
 
       - name: Notify on failure
         if: failure()

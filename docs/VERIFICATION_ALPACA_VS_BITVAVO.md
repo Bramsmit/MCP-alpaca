@@ -10,24 +10,24 @@ Dit document vat de verificatie samen: jouw uitleg over Alpaca paper trading, Bi
 
 ## 2. Eerlijke nuance: dat verhaal vs *dit* project
 
-In [`bot/live_trader.py`](../bot/live_trader.py) zit de **Alpaca**-bot (crypto tegen **USD**, `TradingClient`, `ALPACA_PAPER_TRADE`).
+In [`bot_range_1000/live_trader.py`](../bot_range_1000/live_trader.py) zit de **Alpaca**-bot (crypto tegen **USD**, `TradingClient`, `ALPACA_PAPER_TRADE`).
 
-In [`bot/bitvavo_trader.py`](../bot/bitvavo_trader.py) zit een **aparte** Bitvavo-bot via **ccxt** (EUR-paren), met eigen config [`bot/bitvavo_config.py`](../bot/bitvavo_config.py) en eigen state (`.bitvavo_trade_state.json`, `bitvavo_trades.jsonl`).
+In [`bot_live/bitvavo_trader.py`](../bot_live/bitvavo_trader.py) zit een **aparte** Bitvavo-bot via **ccxt** (EUR-paren), met eigen config [`bot_live/bitvavo_config.py`](../bot_live/bitvavo_config.py) en eigen state (`.bitvavo_trade_state.json`, `bitvavo_trades.jsonl`).
 
 Dat betekent: je beschrijft geen “één bot die van endpoint is gewisseld”, maar **twee implementaties naast elkaar** met vergelijkbare range-logica. Strategie-parameterpercentages zijn in beide configs **relatief** (%, spread, lookback) — dat sluit aan bij het punt dat **EUR vs USD** vooral pijn doet bij vaste dollarbedragen; hier zijn de drempels grotendeels **niet** in dollars gehard.
 
 ## 3. Waar de checklist wél / niet in de Bitvavo-code terugziet
 
-| Thema | In de algemene tekst | In [`bot/bitvavo_trader.py`](../bot/bitvavo_trader.py) (eerlijk) |
+| Thema | In de algemene tekst | In [`bot_live/bitvavo_trader.py`](../bot_live/bitvavo_trader.py) (eerlijk) |
 |--------|----------------------|------------------------------------------------------------------|
 | EUR vs USD | Quote-currency en minimums verschillen | **EUR**-pool en `MAX_CAPITAL_EUR` in config; geen USD-quote in deze bot. |
 | Afronding / precisie | tickSize, decimals, minima | **ccxt** `amount_to_precision` / `price_to_precision` + `load_markets()` — geen handmatige GET /markets-cache, maar wel exchange-precision via ccxt. |
-| Fees in strategie | Entry+exit meenemen | **Geen** expliciet fee-model in drempels/PnL-berekening; PnL op sell is grof `(price - entry) * qty` zonder fee-regel (zie [`bot/bitvavo_trader.py`](../bot/bitvavo_trader.py) rond regels 347–352). |
+| Fees in strategie | Entry+exit meenemen | Bitvavo-code gebruikt maker-fees in PnL op sell (`buy_fee`/`sell_fee`); zie [`bot_live/bitvavo_trader.py`](../bot_live/bitvavo_trader.py). |
 | Uitvoering | WebSocket voor orders | **REST** (`fetch_my_trades`, orders plaatsen via ccxt). `enableRateLimit: True` helpt met limits; **geen** WebSocket order stream in deze bot. |
 | Partial fills / market quirks | Belangrijk voor live | Bot gebruikt **vooral limit** orders; `fetch_my_trades` per fill — geen aparte WebSocket partial-fill state machine. |
 | Rate limits | Throttling, geen spam | ccxt rate limit aan; geen extra backoff-layer in code als verplicht — **gedeeltelijk** gedekt. |
 | Balans available vs in orders | `available` vs `inOrder` | Er is o.a. `get_balance` op **free** EUR en logica rond orders/vervanging; volledige “fee buffer”-story niet als apart hoofdstuk uitgewerkt. |
-| DRY_RUN | — | Parallel aan “paper”: `BITVAVO_DRY_RUN` — geen echte orders als True (`get_exchange` in [`bot/bitvavo_trader.py`](../bot/bitvavo_trader.py)). |
+| DRY_RUN | — | Parallel aan “paper”: `BITVAVO_DRY_RUN` — geen echte orders als True (`get_exchange` in [`bot_live/bitvavo_trader.py`](../bot_live/bitvavo_trader.py)). |
 
 ## 4. Conclusie
 

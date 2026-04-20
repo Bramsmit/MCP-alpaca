@@ -10,6 +10,6 @@ __pycache__
 *.pyc
 alpaca-server/
 
-# Handoff exports (trade-historie; lokaal genereren met python -m bot.export_handoff)
+# Handoff exports (trade-historie; python -m bot_range_1000.export_handoff)
 exports/alpaca_range_bot_v1_handoff_*.json
 exports/alpaca_range_bot_v1_handoff_*.md

@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
 """
-Dagelijks rapport: stuur portfoliowaarde + winst/verlies naar Telegram.
-Draait via GitHub Actions om 8:00 UTC, of automatisch vanuit run_loop om 22:00.
+Dagelijks rapport voor Bitvavo bot: portfoliowaarde + winst/verlies naar Telegram.
 """
 
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bot.live_trader import get_trading_clients, get_portfolio_value
-from bot.telegram import send_telegram
+from bot_live.bitvavo_trader import get_exchange, get_portfolio_value
+from bot_live.telegram import send_telegram
 
-_DAY_STATE_PATH = Path(__file__).resolve().parent.parent / ".alpaca_day_state.json"
+_DAY_STATE_PATH = Path(__file__).resolve().parent.parent / ".bitvavo_day_state.json"
 
 
 def save_day_start(value: float) -> None:
-    """Sla de portfoliowaarde aan het begin van de dag op."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    data = {"date": today, "start_value": value}
-    _DAY_STATE_PATH.write_text(json.dumps(data))
+    _DAY_STATE_PATH.write_text(json.dumps({"date": today, "start_value": value}))
 
 
 def load_day_start() -> tuple[str | None, float | None]:
-    """Laad start-van-dag waarde. Retourneert (datum, waarde) of (None, None)."""
     if not _DAY_STATE_PATH.exists():
         return None, None
     try:
@@ -32,12 +28,11 @@ def load_day_start() -> tuple[str | None, float | None]:
         return None, None
 
 
-def send_daily_report(trading_client=None) -> None:
-    """Stuur eindrapport met start vs. huidige waarde en winst/verlies."""
-    if trading_client is None:
-        trading_client, _ = get_trading_clients()
+def send_daily_report(exchange=None) -> None:
+    if exchange is None:
+        exchange, _ = get_exchange()
 
-    value = get_portfolio_value(trading_client)
+    value = get_portfolio_value(exchange)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     date_str = datetime.now(timezone.utc).strftime("%d-%m-%Y")
 
@@ -49,12 +44,12 @@ def send_daily_report(trading_client=None) -> None:
         arrow = "📈" if diff >= 0 else "📉"
         msg = (
             f"{arrow} Dagrapport {date_str}\n"
-            f"Start:  ${start_value:.2f}\n"
-            f"Nu:     ${value:.2f}\n"
-            f"Winst:  ${diff:+.2f} ({pct:+.1f}%)"
+            f"Start:  €{start_value:.2f}\n"
+            f"Nu:     €{value:.2f}\n"
+            f"Winst:  €{diff:+.2f} ({pct:+.1f}%)"
         )
     else:
-        msg = f"📊 Dagrapport {date_str}\nPortfolio: ${value:.2f}"
+        msg = f"📊 Dagrapport {date_str}\nPortfolio: €{value:.2f}"
 
     send_telegram(msg)
     save_day_start(value)
