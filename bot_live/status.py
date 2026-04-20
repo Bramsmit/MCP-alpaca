@@ -21,15 +21,15 @@ if env_path.exists():
 
 from alpaca.trading.enums import OrderSide
 
-from bot_range_1000.live_trader import (
+from bot_live.alpaca_runtime import (
     get_trading_clients,
-    select_top_symbols,
     get_current_prices,
     get_positions,
     get_open_orders,
     get_portfolio_value,
     get_buying_power,
 )
+from bot_range_1000.live_trader import select_top_symbols
 from bot_live.config import SYMBOL_POOL, SYMBOLS_ACTIVE
 
 

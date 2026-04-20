@@ -19,7 +19,8 @@ sys.path.insert(0, str(ROOT))
 INTERVAL_MINUTEN = 60   # Elk uur
 DAGRAPPORT_UUR = 22     # Lokale tijd: 22:00 stuur dagrapport
 
-from bot_range_1000.live_trader import run_once, get_trading_clients, get_portfolio_value
+from bot_range_1000.live_trader import run_once
+from bot_live.alpaca_runtime import get_trading_clients, get_portfolio_value
 from bot_live.telegram import send_telegram
 from bot_live.daily_report import send_daily_report, save_day_start, load_day_start
 

@@ -23,7 +23,8 @@ Gebruik dit bestand als **projectcontext** in een nieuwe Cursor-workspace of om 
 | Pad | Rol |
 |-----|-----|
 | `bot_live/config.py` | Strategie-constanten (range + hybrid), Bitvavo fee-constants, order-drempels. |
-| `bot_range_1000/live_trader.py` | Range-bot: `run_once()`, Alpaca-clients, orders, state/journal-hooks. |
+| `bot_live/alpaca_runtime.py` | **Gedeelde Alpaca-runtime:** clients, quotes, posities, sells, fill-notificaties, `.alpaca_trade_state.json`. |
+| `bot_range_1000/live_trader.py` | Range-bot: `run_once()`, symbol selectie, range order-loop; gebruikt `alpaca_runtime`. |
 | `bot_range_1000/backtest.py`, `backtest_all.py` | Historische simulatie range-strategie. |
 | `bot_range_1000/export_handoff.py` | Handoff JSON/MD — zie §7. |
 | `bot_hybrid/hybrid_trader.py` | Hybrid regime-trader (hourly); deelt Alpaca-helpers met range. |

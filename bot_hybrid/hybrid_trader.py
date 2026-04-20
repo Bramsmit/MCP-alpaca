@@ -10,8 +10,8 @@ Pipeline per run:
     5. Persist per-symbol regime + highest-close-since-entry in
        `.alpaca_hybrid_state.json`.
 
-Dit bestand vervangt `bot_range_1000/live_trader.py` niet. Live CI blijft de
-range bot draaien totdat HYBRID_ENABLED=True gezet wordt.
+Dit bestand vervangt de range-bot niet. Alpaca-order/positie-hulp komt uit
+`bot_live.alpaca_runtime` (gedeeld met `bot_range_1000.live_trader`).
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ from bot_live.config import (
     ALPACA_CRYPTO_SINGLE_EXIT_ORDER,
     DRY_RUN,
 )
-from bot_range_1000.live_trader import (
+from bot_live.alpaca_runtime import (
     get_trading_clients,
     get_current_prices,
     get_positions,

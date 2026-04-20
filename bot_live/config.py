@@ -64,7 +64,7 @@ BACKTEST_MONTHS = 3
 TIMEFRAME = "1Day"
 
 # ---------------------------------------------------------------------------
-# Hybrid regime-aware trader (additief; raakt live_trader.py niet)
+# Hybrid regime-aware trader (additief; deelt Alpaca-runtime met range-bot)
 # ---------------------------------------------------------------------------
 
 # Master switch. Zolang False blijft gebruikt CI de bestaande range bot.

@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bot_range_1000.live_trader import get_trading_clients, get_portfolio_value
+from bot_live.alpaca_runtime import get_trading_clients, get_portfolio_value
 from bot_live.telegram import send_telegram
 
 _DAY_STATE_PATH = Path(__file__).resolve().parent.parent / ".alpaca_day_state.json"

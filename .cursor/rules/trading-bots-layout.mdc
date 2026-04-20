@@ -1,0 +1,20 @@
+---
+description: Waar welke trading-bot staat en gedeelde Alpaca-code
+alwaysApply: true
+---
+
+# MCP-alpaca — package-indeling
+
+- **`bot_range_1000/`** — Daily **range**-strategie op Alpaca (`live_trader.py`, backtests, export_handoff). Entry: `python -m bot_range_1000.live_trader`.
+- **`bot_hybrid/`** — **Hybrid** regime-trader (hourly). Entry: `python -m bot_hybrid.hybrid_trader`.
+- **`bot_live/`** — **Gedeelde infra:** `config.py`, Telegram, journal, Bitvavo-scripts, rapporten, `requirements.txt`, en **`alpaca_runtime.py`**.
+
+## Alpaca-runtime (belangrijk)
+
+- **`bot_live/alpaca_runtime.py`** bevat o.a. `get_trading_clients`, `get_positions`, `get_open_orders`, limit-sell helpers, `_check_and_notify_filled_orders`, trade-state (`.alpaca_trade_state.json`).
+- Zowel **range** als **hybrid** importeren dit. Wijzigingen in `alpaca_runtime.py` kunnen **beide** bots beïnvloeden.
+- Range-**specifieke** logica (o.a. `select_top_symbols`, `run_once` loop) hoort in **`bot_range_1000/live_trader.py`**, niet dupliceren in hybrid.
+
+## Bitvavo
+
+- Bitvavo-bot en EUR-config: **`bot_live/bitvavo_*.py`**, niet onder `bot_range_1000`.
