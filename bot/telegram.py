@@ -5,6 +5,8 @@ Stuur berichten via de Telegram Bot API.
 
 import os
 
+from bot.config import BITVAVO_FEE_BUY_RATE
+
 try:
     import requests
 except ImportError:
@@ -55,15 +57,25 @@ def notify_trade(side: str, symbol: str, qty: float, price: float, order_id: str
 
 
 def notify_trade_filled(
-    side: str, symbol: str, qty: float, price: float, profit: float | None, portfolio_value: float
+    side: str,
+    symbol: str,
+    qty: float,
+    price: float,
+    profit: float | None,
+    portfolio_value: float,
+    entry_price: float | None = None,
 ) -> bool:
     """Stuur een notificatie bij een gevulde trade."""
     emoji = "🟢" if side.lower() == "buy" else "🔴"
     msg = f"{emoji} Trade: {side.upper()} {qty} {symbol} @ ${price:.4f}"
     if profit is not None and side.lower() == "sell":
-        entry_val = price * qty - profit
-        pct = (profit / entry_val * 100) if entry_val else 0
-        msg += f"\n💰 Verdiend: ${profit:.2f} ({pct:+.1f}%)"
+        if entry_price and qty > 0:
+            cost_basis = entry_price * qty * (1 + BITVAVO_FEE_BUY_RATE)
+            pct = (profit / cost_basis * 100) if cost_basis else 0
+        else:
+            entry_val = price * qty - profit
+            pct = (profit / entry_val * 100) if entry_val else 0
+        msg += f"\n💰 Netto (Bitvavo fees): ${profit:.2f} ({pct:+.1f}%)"
     msg += f"\n📊 Totaal portfolio: ${portfolio_value:.2f}"
     return send_telegram(msg)
 

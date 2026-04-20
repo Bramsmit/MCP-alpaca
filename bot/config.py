@@ -17,35 +17,47 @@ SYMBOLS = SYMBOL_POOL[:SYMBOLS_ACTIVE]
 
 # Kapitaal
 START_CAPITAL = 500
-CAPITAL_PER_ASSET = START_CAPITAL / SYMBOLS_ACTIVE  # verdeel over actieve symbolen
+# verdeel over actieve symbolen
+CAPITAL_PER_ASSET = START_CAPITAL / SYMBOLS_ACTIVE
 
 # Range niveaus (rolling 24h met daily bars)
-# Gebruik gemiddelde van laatste 3 dagen i.p.v. 1 dag - minder gevoelig voor uitschieters
+# Gemiddelde laatste N dagen i.p.v. 1 dag — minder uitschieters
 LEVELS_LOOKBACK_DAYS = 3
 BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de gem. low
 SELL_BELOW_HIGH_PCT = 0.02  # 2% onder de gem. high
 MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop
 
+# Bitvavo spot (EUR-markten), laagste tier tot ~€100k volume / 30 dagen:
+# maker vanaf 0,15%, taker vanaf 0,25%.
+BITVAVO_MAKER_FEE_RATE = 0.0015
+BITVAVO_TAKER_FEE_RATE = 0.0025
+# Limietorders ≈ maker; stop/markt-exit ≈ taker (backtest).
+# Niet in Alpaca-orders: alleen per trade handmatig doorrekenen (live/journal/telegram/backtest).
+BITVAVO_FEE_BUY_RATE = BITVAVO_MAKER_FEE_RATE
+BITVAVO_FEE_SELL_LIMIT_RATE = BITVAVO_MAKER_FEE_RATE
+BITVAVO_FEE_SELL_TAKER_RATE = BITVAVO_TAKER_FEE_RATE
+
 # Stop-loss: vast bedrag per eenheid onder koopniveau
 # Backtest beste: $0.01/eenheid
 STOP_LOSS_PER_UNIT = 0.01
 
-# Alpaca crypto: slechts 1 exit order per positie (geen bracket orders).
-# Plaats NOOIT limit sell + stop-loss tegelijk - 2e order faalt met "available: 0".
+# Alpaca crypto: max 1 exit order per positie (geen bracket orders).
+# NOOIT limit sell + stop-loss tegelijk — 2e order faalt (available: 0).
 ALPACA_CRYPTO_SINGLE_EXIT_ORDER = True
 
-# Na cancel: wacht even voordat nieuwe order geplaatst wordt (balance moet vrijkomen)
+# Na cancel: korte pauze (balance moet vrijkomen)
 ORDER_REPLACE_DELAY_SEC = 3
 
-# Dynamische order updates: herplaats order als prijs meer dan dit percentage afwijkt
+# Herplaats order als prijs meer dan dit % afwijkt
 ORDER_UPDATE_THRESHOLD = 0.01  # 1%
 
-# Na 24 uur: order waarschijnlijk niet meer relevant (prijs bewogen), cancel en herplaats met verse 24h levels
+# Na 24u: order minder relevant; herplaats met verse levels
 ORDER_MAX_AGE_HOURS = 24
 
-# Als huidige prijs >5% boven buy order: order vult waarschijnlijk niet, direct cancel+herplaats
+# Prijs >5% boven buy order: cancel + herplaats
 ORDER_STALE_PRICE_THRESHOLD = 0.05
-STOP_LOSS_VALUES_TO_TEST = [0.01, 0.02, 0.03, 0.05, 0.10]  # voor backtest
+# voor backtest
+STOP_LOSS_VALUES_TO_TEST = [0.01, 0.02, 0.03, 0.05, 0.10]
 
 # Backtest
 BACKTEST_MONTHS = 3

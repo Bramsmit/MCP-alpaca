@@ -39,6 +39,8 @@ from bot.config import (
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
+    BITVAVO_FEE_BUY_RATE,
+    BITVAVO_FEE_SELL_LIMIT_RATE,
     STOP_LOSS_PER_UNIT,
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
@@ -410,9 +412,14 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
                 entry = entries[sym].get("entry", 0)
                 entry_price_for_log = entry if entry else None
                 if entry:
-                    profit = (price - entry) * qty
+                    # Bitvavo per trade: notional × (1 ± fee); limiet ≈ maker
+                    cost_incl = entry * qty * (1 + BITVAVO_FEE_BUY_RATE)
+                    proceeds = price * qty * (1 - BITVAVO_FEE_SELL_LIMIT_RATE)
+                    profit = proceeds - cost_incl
                 del entries[sym]
-            notify_trade_filled(side, sym, qty, price, profit, portfolio_value)
+            notify_trade_filled(
+                side, sym, qty, price, profit, portfolio_value, entry_price=entry_price_for_log
+            )
             log_trade(
                 order_id=oid,
                 symbol=sym,

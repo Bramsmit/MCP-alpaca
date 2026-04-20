@@ -8,6 +8,8 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from bot.config import BITVAVO_FEE_BUY_RATE
+
 log = logging.getLogger(__name__)
 
 
@@ -29,7 +31,7 @@ def log_trade(
     """Schrijf één gevulde trade naar trades.jsonl (append)."""
     profit_pct = None
     if profit is not None and entry_price and entry_price > 0 and qty > 0:
-        cost = entry_price * qty
+        cost = entry_price * qty * (1 + BITVAVO_FEE_BUY_RATE)
         profit_pct = round(profit / cost * 100, 2)
 
     record = {

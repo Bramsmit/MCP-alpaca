@@ -29,6 +29,9 @@ from bot.config import (
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
+    BITVAVO_FEE_BUY_RATE,
+    BITVAVO_FEE_SELL_LIMIT_RATE,
+    BITVAVO_FEE_SELL_TAKER_RATE,
     STOP_LOSS_VALUES_TO_TEST,
     BACKTEST_MONTHS,
 )
@@ -106,7 +109,6 @@ def run_backtest(
         buy_level = prev_low * (1 + BUY_ABOVE_LOW_PCT)
         sell_level = prev_high * (1 - SELL_BELOW_HIGH_PCT)
 
-        # Min 2% spread
         if sell_level < buy_level * (1 + MIN_SPREAD_PCT):
             equity_curve.append({"date": ts, "cash": cash, "position": position, "value": cash + position * close})
             continue
@@ -114,19 +116,20 @@ def run_backtest(
         if position > 0:
             # We hebben een positie: check stop-loss eerst, dan take-profit
             if stop_loss_per_unit > 0 and low <= stop_price:
-                # Stop-loss geraakt
-                cash += position * stop_price
+                # Bitvavo taker op verkoop
+                cash += position * stop_price * (1 - BITVAVO_FEE_SELL_TAKER_RATE)
                 trades.append({"date": ts, "side": "sell", "qty": position, "price": stop_price, "type": "stop_loss"})
                 position = 0
             elif high >= sell_level:
-                # Take-profit
-                cash += position * sell_level
+                # Bitvavo maker op limit-verkoop
+                cash += position * sell_level * (1 - BITVAVO_FEE_SELL_LIMIT_RATE)
                 trades.append({"date": ts, "side": "sell", "qty": position, "price": sell_level, "type": "take_profit"})
                 position = 0
         else:
             # Geen positie: check of we kunnen kopen
             if low <= buy_level and cash > 0:
-                qty = cash / buy_level
+                # Bitvavo maker op koop: volledige cash = qty × prijs × (1 + fee)
+                qty = cash / (buy_level * (1 + BITVAVO_FEE_BUY_RATE))
                 position = qty
                 cash = 0
                 buy_price = buy_level
@@ -152,7 +155,10 @@ def main():
     print("Range-trading backtest: AVAX, UNI, AAVE")
     print("=" * 60)
     print(f"Koop: {BUY_ABOVE_LOW_PCT*100}% boven low | Verkoop: {SELL_BELOW_HIGH_PCT*100}% onder high")
-    print(f"Min spread: {MIN_SPREAD_PCT*100}% | Kapitaal per asset: ${CAPITAL_PER_ASSET:.0f}")
+    print(
+        f"Min spread: {MIN_SPREAD_PCT*100}% (+ Bitvavo maker {BITVAVO_FEE_BUY_RATE*100:.2f}%/"
+        f"{BITVAVO_FEE_SELL_LIMIT_RATE*100:.2f}%) | Kapitaal per asset: ${CAPITAL_PER_ASSET:.0f}"
+    )
     print()
 
     print("Ophalen data van Alpaca...")
