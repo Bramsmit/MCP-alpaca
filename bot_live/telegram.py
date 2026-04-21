@@ -47,10 +47,19 @@ def send_telegram(message: str) -> bool:
         return False
 
 
+def _quote_for_symbol(symbol: str) -> str:
+    """EUR-paren als €, USD (Alpaca) als $."""
+    s = symbol.upper()
+    if "/EUR" in s or s.endswith("EUR"):
+        return "€"
+    return "$"
+
+
 def notify_trade(side: str, symbol: str, qty: float, price: float, order_id: str = "") -> bool:
     """Stuur een trade-notificatie naar Telegram."""
+    q = _quote_for_symbol(symbol)
     emoji = "🟢" if side.lower() == "buy" else "🔴"
-    msg = f"{emoji} {side.upper()}: {qty} {symbol} @ ${price:.4f}"
+    msg = f"{emoji} {side.upper()}: {qty} {symbol} @ {q}{price:.4f}"
     if order_id:
         msg += f"\nOrder ID: {order_id}"
     return send_telegram(msg)
@@ -66,8 +75,9 @@ def notify_trade_filled(
     entry_price: float | None = None,
 ) -> bool:
     """Stuur een notificatie bij een gevulde trade."""
+    q = _quote_for_symbol(symbol)
     emoji = "🟢" if side.lower() == "buy" else "🔴"
-    msg = f"{emoji} Trade: {side.upper()} {qty} {symbol} @ ${price:.4f}"
+    msg = f"{emoji} Trade: {side.upper()} {qty} {symbol} @ {q}{price:.4f}"
     if profit is not None and side.lower() == "sell":
         if entry_price and qty > 0:
             cost_basis = entry_price * qty * (1 + BITVAVO_FEE_BUY_RATE)
@@ -75,12 +85,13 @@ def notify_trade_filled(
         else:
             entry_val = price * qty - profit
             pct = (profit / entry_val * 100) if entry_val else 0
-        msg += f"\n💰 Netto (Bitvavo fees): ${profit:.2f} ({pct:+.1f}%)"
-    msg += f"\n📊 Totaal portfolio: ${portfolio_value:.2f}"
+        msg += f"\n💰 Netto (Bitvavo fees): {q}{profit:.2f} ({pct:+.1f}%)"
+    msg += f"\n📊 Totaal portfolio: {q}{portfolio_value:.2f}"
     return send_telegram(msg)
 
 
 def notify_stop_loss(symbol: str, qty: float, price: float) -> bool:
     """Stuur een stop-loss notificatie."""
-    msg = f"🛑 STOP-LOSS: {qty} {symbol} verkocht @ ${price:.4f}"
+    q = _quote_for_symbol(symbol)
+    msg = f"🛑 STOP-LOSS: {qty} {symbol} verkocht @ {q}{price:.4f}"
     return send_telegram(msg)

@@ -82,7 +82,10 @@ def get_exchange():
 
 
 def get_balance(exchange) -> float:
-    """Vrij beschikbaar EUR kapitaal."""
+    """
+    Vrij EUR: `fetch_balance()['EUR']['free']` — nog niet vastgezet in open orders.
+    Dat is het saldo dat Bitvavo beschikbaar noemt voor nieuwe orders; daarna bepalen we de buy-grootte.
+    """
     b = exchange.fetch_balance()
     return float(b.get("EUR", {}).get("free", 0) or 0)
 
@@ -391,7 +394,15 @@ def _check_and_notify_filled_trades(
                 elif side == "buy":
                     entries[symbol] = {"qty": qty, "entry": price}
 
-                notify_trade_filled(side, symbol, qty, price, profit, portfolio_value)
+                notify_trade_filled(
+                    side,
+                    symbol,
+                    qty,
+                    price,
+                    profit,
+                    portfolio_value,
+                    entry_price=entry_price_for_log,
+                )
                 log_trade(
                     order_id=tid,
                     symbol=symbol,
@@ -635,31 +646,69 @@ def run_once():
                 if needs_new_order:
                     if existing_buy and ORDER_REPLACE_DELAY_SEC > 0:
                         time.sleep(ORDER_REPLACE_DELAY_SEC)
-                    qty = capital_per / buy_level
-                    buy_qty = _round_amount(exchange, symbol, qty)
-                    buy_price = _round_price(exchange, symbol, buy_level)
-                    ok_sz, sz_reason = _order_size_ok(exchange, symbol, buy_qty, buy_price)
-                    if not ok_sz:
-                        log.warning("  %s: Buy overgeslagen: %s", symbol, sz_reason)
+
+                    # Eerst actueel vrij EUR opvragen, dan pas ordergrootte (geen vaste som per asset die het saldo overschrijdt).
+                    free_now = get_balance(exchange)
+                    order_eur = min(
+                        capital_per, max(0.0, free_now * 0.992)
+                    )
+                    try:
+                        m = exchange.market(symbol)
+                        cost_min = (m.get("limits") or {}).get("cost") or {}
+                        min_eur = float(cost_min.get("min") or 5.0)
+                    except Exception:
+                        min_eur = 5.0
+
+                    if order_eur < min_eur:
+                        log.warning(
+                            "  %s: Buy overgeslagen: vrij €%.2f (doel €%.2f), onder minimum order €%.2f",
+                            symbol,
+                            free_now,
+                            capital_per,
+                            min_eur,
+                        )
                         stats["skipped"] += 1
                     else:
-                        try:
-                            tag = " [DRY RUN]" if dry_run else ""
-                            lim_params = _limit_order_params()
-                            if not dry_run:
-                                result = exchange.create_limit_buy_order(
-                                    symbol, buy_qty, buy_price, params=lim_params
+                        if order_eur < capital_per * 0.999:
+                            log.info(
+                                "  %s: Buy met verlaagd bedrag €%.2f i.p.v. €%.2f "
+                                "(vrij EUR gedeeld over assets)",
+                                symbol,
+                                order_eur,
+                                capital_per,
+                            )
+                        qty = order_eur / buy_level
+                        buy_qty = _round_amount(exchange, symbol, qty)
+                        buy_price = _round_price(exchange, symbol, buy_level)
+                        ok_sz, sz_reason = _order_size_ok(exchange, symbol, buy_qty, buy_price)
+                        if not ok_sz:
+                            log.warning("  %s: Buy overgeslagen: %s", symbol, sz_reason)
+                            stats["skipped"] += 1
+                        else:
+                            try:
+                                tag = " [DRY RUN]" if dry_run else ""
+                                lim_params = _limit_order_params()
+                                if not dry_run:
+                                    result = exchange.create_limit_buy_order(
+                                        symbol, buy_qty, buy_price, params=lim_params
+                                    )
+                                    bot_orders.setdefault(symbol, {})["buy"] = result["id"]
+                                log.info(
+                                    "  %s: Limit buy @ €%.4f (€%.2f notional)%s",
+                                    symbol,
+                                    buy_level,
+                                    order_eur,
+                                    tag,
                                 )
-                                bot_orders.setdefault(symbol, {})["buy"] = result["id"]
-                            log.info("  %s: Limit buy @ €%.4f (€%.0f)%s", symbol, buy_level, capital_per, tag)
-                            if not existing_buy:
-                                send_telegram(
-                                    f"📊 {symbol}: Limit buy @ €{buy_level:.4f} (€{capital_per:.0f}) geplaatst{tag}"
-                                )
-                                stats["placed"] += 1
-                        except Exception as e:
-                            log.warning("  %s: Fout buy order: %s", symbol, e)
-                            send_telegram(f"❌ {symbol}: Fout buy order: {e}")
+                                if not existing_buy:
+                                    send_telegram(
+                                        f"📊 {symbol}: Limit buy @ €{buy_level:.4f} "
+                                        f"(€{order_eur:.0f}) geplaatst{tag}"
+                                    )
+                                    stats["placed"] += 1
+                            except Exception as e:
+                                log.warning("  %s: Fout buy order: %s", symbol, e)
+                                send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
     _save_state(entries=state_entries, bot_orders=bot_orders)
 
