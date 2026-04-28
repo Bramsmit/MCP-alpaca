@@ -1,0 +1,5 @@
+timestamp,order_id,symbol,side,qty,price,entry_price,profit,profit_pct,portfolio_value
+2026-03-15T14:22:01.123456+00:00,bv-example-buy-001,ETH/EUR,buy,0.08,2850.5,,,,12450.75
+2026-03-18T09:41:33.987654+00:00,bv-example-sell-001,ETH/EUR,sell,0.08,2922.0,2850.5,5.4238,0.24,12482.12
+2026-03-20T16:05:00.000000+00:00,bv-example-buy-002,BTC/EUR,buy,0.015,61234.0,,,,12482.12
+2026-03-22T11:30:45.111222+00:00,alpaca-example-buy-usd,SOL/USD,buy,2.5,142.33,,,,9500.0

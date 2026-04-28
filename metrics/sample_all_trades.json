@@ -1,0 +1,50 @@
+[
+  {
+    "timestamp": "2026-03-15T14:22:01.123456+00:00",
+    "order_id": "bv-example-buy-001",
+    "symbol": "ETH/EUR",
+    "side": "buy",
+    "qty": 0.08,
+    "price": 2850.5,
+    "entry_price": null,
+    "profit": null,
+    "profit_pct": null,
+    "portfolio_value": 12450.75
+  },
+  {
+    "timestamp": "2026-03-18T09:41:33.987654+00:00",
+    "order_id": "bv-example-sell-001",
+    "symbol": "ETH/EUR",
+    "side": "sell",
+    "qty": 0.08,
+    "price": 2922.0,
+    "entry_price": 2850.5,
+    "profit": 5.4238,
+    "profit_pct": 0.24,
+    "portfolio_value": 12482.12
+  },
+  {
+    "timestamp": "2026-03-20T16:05:00.000000+00:00",
+    "order_id": "bv-example-buy-002",
+    "symbol": "BTC/EUR",
+    "side": "buy",
+    "qty": 0.015,
+    "price": 61234.0,
+    "entry_price": null,
+    "profit": null,
+    "profit_pct": null,
+    "portfolio_value": 12482.12
+  },
+  {
+    "timestamp": "2026-03-22T11:30:45.111222+00:00",
+    "order_id": "alpaca-example-buy-usd",
+    "symbol": "SOL/USD",
+    "side": "buy",
+    "qty": 2.5,
+    "price": 142.33,
+    "entry_price": null,
+    "profit": null,
+    "profit_pct": null,
+    "portfolio_value": 9500.0
+  }
+]

@@ -6,6 +6,7 @@ dist
 .alpaca_trade_state.json
 .alpaca_hybrid_state.json
 trades.jsonl
+bitvavo_trades.jsonl
 __pycache__
 *.pyc
 alpaca-server/
@@ -13,3 +14,7 @@ alpaca-server/
 # Handoff exports (trade-historie; python -m bot_range_1000.export_handoff)
 exports/alpaca_range_bot_v1_handoff_*.json
 exports/alpaca_range_bot_v1_handoff_*.md
+
+# Bitvavo metrics tool output (metrics/bitvavo_compare)
+metrics/output/*
+!metrics/output/.gitkeep

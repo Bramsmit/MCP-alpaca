@@ -425,6 +425,7 @@ def _check_and_notify_filled_trades(
                     entry_price=entry_price_for_log,
                     profit=profit,
                     portfolio_value=portfolio_value,
+                    journal_filename=_BITVAVO_JOURNAL_FILE,
                 )
                 new_notified.append(tid)
                 new_count += 1

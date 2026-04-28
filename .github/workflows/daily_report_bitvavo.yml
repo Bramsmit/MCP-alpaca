@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Journal + dagstate (bitvavo_trades.jsonl = fills-log Bitvavo-bot)
       - name: Herstel state (dagstart waarde)
         uses: actions/cache@v4
         with:

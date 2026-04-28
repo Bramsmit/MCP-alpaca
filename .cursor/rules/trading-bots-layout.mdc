@@ -18,3 +18,4 @@ alwaysApply: true
 ## Bitvavo
 
 - Bitvavo-bot en EUR-config: **`bot_live/bitvavo_*.py`**, niet onder `bot_range_1000`.
+- Journal naar CSV / metrics (alleen EUR-rijen uit JSONL): **`python -m metrics.bitvavo_compare`** — [`metrics/bitvavo_compare/README.md`](metrics/bitvavo_compare/README.md).

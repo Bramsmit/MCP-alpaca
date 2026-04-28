@@ -12,7 +12,7 @@ Dit document vat de verificatie samen: jouw uitleg over Alpaca paper trading, Bi
 
 In [`bot_range_1000/live_trader.py`](../bot_range_1000/live_trader.py) zit de **Alpaca**-bot (crypto tegen **USD**, `TradingClient`, `ALPACA_PAPER_TRADE`).
 
-In [`bot_live/bitvavo_trader.py`](../bot_live/bitvavo_trader.py) zit een **aparte** Bitvavo-bot via **ccxt** (EUR-paren), met eigen config [`bot_live/bitvavo_config.py`](../bot_live/bitvavo_config.py) en eigen state (`.bitvavo_trade_state.json`, `bitvavo_trades.jsonl`).
+In [`bot_live/bitvavo_trader.py`](../bot_live/bitvavo_trader.py) zit een **aparte** Bitvavo-bot via **ccxt** (EUR-paren), met eigen config [`bot_live/bitvavo_config.py`](../bot_live/bitvavo_config.py) en eigen state (`.bitvavo_trade_state.json`). Fills worden gelogd naar **`bitvavo_trades.jsonl`** via [`bot_live/journal.py`](../bot_live/journal.py) (`journal_filename`) — consistent met [`trade_bitvavo.yml`](../.github/workflows/trade_bitvavo.yml) (cache).
 
 Dat betekent: je beschrijft geen “één bot die van endpoint is gewisseld”, maar **twee implementaties naast elkaar** met vergelijkbare range-logica. Strategie-parameterpercentages zijn in beide configs **relatief** (%, spread, lookback) — dat sluit aan bij het punt dat **EUR vs USD** vooral pijn doet bij vaste dollarbedragen; hier zijn de drempels grotendeels **niet** in dollars gehard.
 
@@ -36,3 +36,7 @@ Dat betekent: je beschrijft geen “één bot die van endpoint is gewisseld”, 
 - **Een strenge praktische checklist is strenger dan wat de Bitvavo-bot nu overal expliciet doet** (vooral: fees in strategie, WebSocket-ordertracking, uitgebreide market-status handling). Wat er wél zit (EUR-config, ccxt-precision, balance-aware flows, trade journaling, rate limit via ccxt) sluit **deels** aan.
 
 Geen codewijzigingen in deze verificatie; alleen dit kaderdocument.
+
+---
+
+**Zie ook:** [Plan om Alpaca- vs Bitvavo-resultaten eerlijk te vergelijken (methodiek, exports, definities)](PLAN_ALPACA_VS_BITVAVO_VERGELIJKING.md).

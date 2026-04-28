@@ -1,5 +1,9 @@
 """
-Trade journal: schrijft elke gevulde trade naar trades.jsonl.
+Trade journal: schrijft elke gevulde trade naar een JSONL-bestand in de repo-root.
+
+Standaard: trades.jsonl (Alpaca-bot). Bitvavo-bot gebruikt journal_filename='bitvavo_trades.jsonl'
+(zelfde formaat), zodat GitHub Actions dat bestand kan cachen.
+
 Gebruik load_trades() om de geschiedenis te lezen.
 """
 
@@ -13,8 +17,8 @@ from bot_live.config import BITVAVO_FEE_BUY_RATE
 log = logging.getLogger(__name__)
 
 
-def _journal_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "trades.jsonl"
+def _journal_path(filename: str = "trades.jsonl") -> Path:
+    return Path(__file__).resolve().parent.parent / filename
 
 
 def log_trade(
@@ -27,8 +31,9 @@ def log_trade(
     entry_price: float | None,
     profit: float | None,
     portfolio_value: float,
+    journal_filename: str = "trades.jsonl",
 ) -> None:
-    """Schrijf één gevulde trade naar trades.jsonl (append)."""
+    """Schrijf één gevulde trade append naar journal_filename (onder repo-root)."""
     profit_pct = None
     if profit is not None and entry_price and entry_price > 0 and qty > 0:
         cost = entry_price * qty * (1 + BITVAVO_FEE_BUY_RATE)
@@ -48,19 +53,19 @@ def log_trade(
     }
 
     try:
-        path = _journal_path()
+        path = _journal_path(journal_filename)
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
     except Exception as e:
         log.warning("Kon trade niet loggen naar journal: %s", e)
 
 
-def load_trades() -> list[dict]:
-    """Laad alle trades uit trades.jsonl.
+def load_trades(journal_filename: str = "trades.jsonl") -> list[dict]:
+    """Laad alle trades uit het gegeven journal-bestand (repo-root).
 
     Retourneert lege lijst als bestand ontbreekt.
     """
-    path = _journal_path()
+    path = _journal_path(journal_filename)
     if not path.exists():
         return []
     trades = []
