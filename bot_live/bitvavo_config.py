@@ -2,14 +2,23 @@
 Configuratie voor de Bitvavo range-trading bot (EUR pairs).
 """
 
-# Pool van crypto symbolen op Bitvavo (tegen EUR)
+# Breedere pool: meer kandidaten voor select_top_symbols (score + spread-check).
+# Hoeveel tegelijk live is SYMBOLS_ACTIVE — niet gelijk aan pool-grootte.
 SYMBOL_POOL = [
-    "AVAX/EUR", "UNI/EUR", "AAVE/EUR", "LINK/EUR", "DOT/EUR",
-    "SOL/EUR", "ADA/EUR", "XRP/EUR", "LTC/EUR", "BCH/EUR",
-    "DOGE/EUR", "ETH/EUR", "BTC/EUR",
+    "BTC/EUR",
+    "ETH/EUR",
+    "SOL/EUR",
+    "XRP/EUR",
+    "LINK/EUR",
+    "ADA/EUR",
+    "AVAX/EUR",
+    "DOT/EUR",
+    "UNI/EUR",
+    "DOGE/EUR",
+    "LTC/EUR",
+    "BCH/EUR",
 ]
 
-# Hoeveel symbolen actief getrade worden (geselecteerd op winstgevendheid)
 SYMBOLS_ACTIVE = 3
 
 # Maximaal kapitaal dat de bot mag inzetten (EUR)
@@ -22,15 +31,22 @@ CAPITAL_PER_ASSET = MAX_CAPITAL_EUR / SYMBOLS_ACTIVE
 LEVELS_LOOKBACK_DAYS = 3
 BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de gem. low
 SELL_BELOW_HIGH_PCT = 0.02  # 2% onder de gem. high
-MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop (bruto)
+# Bruto ruimte tussen buy-/sell-level (hoger = minder marginale setups, minder overtrade).
+MIN_SPREAD_PCT = 0.024
 
 # Bitvavo fees (pas aan naar je tier op bitvavo.com/fees). Gebruikt voor:
 # - strengere pair-selectie: bruto-spread moet ook fees dekken
 # - Telegram/journal PnL-schatting op sell (maker beide zijden)
 FEE_MAKER_PCT = 0.0015      # 0,15% — typische startfee EUR-markten cat. A
 FEE_TAKER_PCT = 0.0025      # 0,25% — alleen ter referentie / logging
-# Round-trip bij passieve limits: koop + verkoop als maker (%)
+# Round-trip bij passieve limits: koop + verkoop als maker (~0,3% totaal)
 ESTIMATED_ROUND_TRIP_FEE_PCT = FEE_MAKER_PCT * 2
+
+# Verwachte netto winstmarge op de trade (geen micro-scalps): richting 1,5–2%.
+# Limit-sell floor: sell_price >= entry * (1 + ESTIMATED_ROUND_TRIP_FEE_PCT + TARGET_MIN_NET_PROFIT_PCT)
+# (fee-aware; nooit verkopen onder alleen-fees-break-even: mult > 1 + fee%).
+TARGET_MIN_NET_PROFIT_PCT = 0.02
+MIN_LIMIT_SELL_PRICE_MULT = 1 + ESTIMATED_ROUND_TRIP_FEE_PCT + TARGET_MIN_NET_PROFIT_PCT
 
 # Vaste fee per zijde (EUR): bij kleine notionals domineert dit boven %-tarief.
 # Spread-check gebruikt max(strategie-%, vaste€/notional) + %-round-trip zodat
@@ -61,6 +77,6 @@ STOP_LOSS_PER_UNIT = 0.01
 ORDER_REPLACE_DELAY_SEC = 3
 
 # Dynamische order updates
-ORDER_UPDATE_THRESHOLD = 0.01  # 1%
+ORDER_UPDATE_THRESHOLD = 0.015  # 1.5%
 ORDER_MAX_AGE_HOURS = 24
 ORDER_STALE_PRICE_THRESHOLD = 0.05

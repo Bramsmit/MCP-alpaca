@@ -42,6 +42,7 @@ from bot_live.bitvavo_config import (
     FEE_MAKER_PCT,
     ROUND_TRIP_FIXED_FEE_EUR,
     MIN_ORDER_REF_EUR,
+    MIN_LIMIT_SELL_PRICE_MULT,
     required_min_spread_fraction,
     POST_ONLY_LIMIT_ORDERS,
     ORDER_UPDATE_THRESHOLD,
@@ -525,6 +526,19 @@ def run_once():
                 None,
             )
             limit_sell = sell_level
+            entry_px = float(state_entries.get(symbol, {}).get("entry") or 0)
+            if entry_px <= 0:
+                entry_px = buy_level
+            min_profitable_sell = entry_px * MIN_LIMIT_SELL_PRICE_MULT
+            if limit_sell < min_profitable_sell:
+                log.info(
+                    "  %s: Sell-floor (entry×fee+edge): %.6f → %.6f",
+                    symbol,
+                    limit_sell,
+                    min_profitable_sell,
+                )
+                limit_sell = min_profitable_sell
+
             needs_new_sell = True
 
             if existing_sell:
