@@ -40,6 +40,9 @@ from bot_live.bitvavo_config import (
     MIN_SPREAD_PCT,
     ESTIMATED_ROUND_TRIP_FEE_PCT,
     FEE_MAKER_PCT,
+    ROUND_TRIP_FIXED_FEE_EUR,
+    MIN_ORDER_REF_EUR,
+    required_min_spread_fraction,
     POST_ONLY_LIMIT_ORDERS,
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
@@ -48,9 +51,6 @@ from bot_live.bitvavo_config import (
 )
 from bot_live.telegram import send_telegram, notify_trade_filled
 from bot_live.journal import log_trade
-
-# Minimale bruto-spread = strategie-rand + geschatte round-trip fees (maker)
-_EFFECTIVE_MIN_SPREAD_PCT = MIN_SPREAD_PCT + ESTIMATED_ROUND_TRIP_FEE_PCT
 
 # Aparte state/journal bestanden voor Bitvavo (los van Alpaca)
 _BITVAVO_STATE_FILE = ".bitvavo_trade_state.json"
@@ -150,7 +150,9 @@ def get_current_prices(exchange, symbols: list[str]) -> dict[str, float]:
     return result
 
 
-def get_24h_levels(exchange, symbols: list[str]) -> dict[str, tuple[float, float]]:
+def get_24h_levels(
+    exchange, symbols: list[str], min_spread_frac: float
+) -> dict[str, tuple[float, float]]:
     """Bereken buy/sell niveaus uit recente daily bars."""
     result = {}
     for symbol in symbols:
@@ -163,14 +165,16 @@ def get_24h_levels(exchange, symbols: list[str]) -> dict[str, tuple[float, float
             high = sum(bar[2] for bar in recent) / len(recent)
             buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
             sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-            if sell_level >= buy_level * (1 + _EFFECTIVE_MIN_SPREAD_PCT):
+            if sell_level >= buy_level * (1 + min_spread_frac):
                 result[symbol] = (buy_level, sell_level)
         except Exception as e:
             log.warning("get_24h_levels %s: %s", symbol, e)
     return result
 
 
-def _get_levels_and_scores(exchange, symbols: list[str]) -> dict[str, tuple[float, float, float]]:
+def _get_levels_and_scores(
+    exchange, symbols: list[str], min_spread_frac: float
+) -> dict[str, tuple[float, float, float]]:
     """Levels + winstbaarheidsscore per symbool."""
     result = {}
     for symbol in symbols:
@@ -183,7 +187,7 @@ def _get_levels_and_scores(exchange, symbols: list[str]) -> dict[str, tuple[floa
             high = sum(bar[2] for bar in recent) / len(recent)
             buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
             sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-            spread_ok = sell_level >= buy_level * (1 + _EFFECTIVE_MIN_SPREAD_PCT)
+            spread_ok = sell_level >= buy_level * (1 + min_spread_frac)
             spread_pct = (sell_level - buy_level) / buy_level if spread_ok else 0
             range_pct = (high - low) / low if low else 0
             score = spread_pct * (1 + range_pct)
@@ -213,10 +217,14 @@ def get_free_sell_qty(exchange, symbol: str) -> float:
 
 
 def select_top_symbols(
-    exchange, pool: list[str], n: int
+    exchange,
+    pool: list[str],
+    n: int,
+    ref_notional_eur: float,
 ) -> tuple[list[str], dict[str, tuple[float, float]]]:
     """Selecteer top N symbolen op score. Symbolen met posities blijven altijd actief."""
-    levels_scored = _get_levels_and_scores(exchange, pool)
+    min_spread_frac = required_min_spread_fraction(ref_notional_eur)
+    levels_scored = _get_levels_and_scores(exchange, pool, min_spread_frac)
     positions = get_positions(exchange, pool)
     symbols_with_positions = set(positions.keys())
 
@@ -234,7 +242,7 @@ def select_top_symbols(
     levels = {sym: (buy, sell) for sym, (buy, sell, _) in sorted_by_score if sym in selected}
     missing = [s for s in selected if s not in levels]
     if missing:
-        fallback = get_24h_levels(exchange, missing)
+        fallback = get_24h_levels(exchange, missing, min_spread_frac)
         levels.update(fallback)
     return selected, levels
 
@@ -389,7 +397,12 @@ def _check_and_notify_filled_trades(
                     if entry:
                         buy_fee = entry * qty * FEE_MAKER_PCT
                         sell_fee = price * qty * FEE_MAKER_PCT
-                        profit = (price - entry) * qty - buy_fee - sell_fee
+                        profit = (
+                            (price - entry) * qty
+                            - buy_fee
+                            - sell_fee
+                            - ROUND_TRIP_FIXED_FEE_EUR
+                        )
                     del entries[symbol]
                 elif side == "buy":
                     entries[symbol] = {"qty": qty, "entry": price}
@@ -436,7 +449,12 @@ def run_once():
     # Alleen orders in dit dict worden aangeraakt — andere orders blijven ongemoeid.
     bot_orders = dict(state.get("bot_orders", {}))
 
-    symbols, levels = select_top_symbols(exchange, SYMBOL_POOL, SYMBOLS_ACTIVE)
+    balance_pre = get_balance(exchange)
+    cap_target = (MAX_CAPITAL_EUR / SYMBOLS_ACTIVE) * 0.995
+    est_order_eur = min(cap_target, max(0.0, balance_pre * 0.992))
+    ref_notional = max(MIN_ORDER_REF_EUR, est_order_eur) if est_order_eur > 0 else cap_target
+
+    symbols, levels = select_top_symbols(exchange, SYMBOL_POOL, SYMBOLS_ACTIVE, ref_notional)
     if not symbols:
         log.warning("Geen symbolen geselecteerd")
         send_telegram("⚠️ Geen symbolen geselecteerd uit pool")
@@ -457,12 +475,16 @@ def run_once():
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
     log.info("Geselecteerd: %s", ", ".join(symbols))
+    eff_spread_pct = required_min_spread_fraction(ref_notional) * 100
     log.info(
-        "Fees/spread: maker %.2f%%/zijde | effectieve min. spread %.2f%% (strategie %.2f%% + round-trip fees %.2f%%)",
+        "Fees/spread: maker %.2f%%/zijde | ref-notional €%.2f | min. spread %.2f%% "
+        "(strategie ≥%.2f%% + %-fee %.2f%% + vast €%.2f round-trip)",
         FEE_MAKER_PCT * 100,
-        _EFFECTIVE_MIN_SPREAD_PCT * 100,
+        ref_notional,
+        eff_spread_pct,
         MIN_SPREAD_PCT * 100,
         ESTIMATED_ROUND_TRIP_FEE_PCT * 100,
+        ROUND_TRIP_FIXED_FEE_EUR,
     )
     log.info("Vrij EUR: €%.2f | Max: €%.2f | Per asset: €%.2f", balance_eur, MAX_CAPITAL_EUR, capital_per)
     log.info("Levels: %s", levels)
@@ -685,6 +707,25 @@ def run_once():
                             log.warning("  %s: Buy overgeslagen: %s", symbol, sz_reason)
                             stats["skipped"] += 1
                         else:
+                            spread_frac = (
+                                (sell_level - buy_level) / buy_level if buy_level > 0 else 0
+                            )
+                            gross_eur_est = order_eur * spread_frac
+                            fee_eur_est = (
+                                ROUND_TRIP_FIXED_FEE_EUR
+                                + order_eur * ESTIMATED_ROUND_TRIP_FEE_PCT
+                            )
+                            if gross_eur_est < fee_eur_est:
+                                log.warning(
+                                    "  %s: Buy overgeslagen: geschatte bruto €%.2f < fees €%.2f "
+                                    "(levels vs order €%.2f)",
+                                    symbol,
+                                    gross_eur_est,
+                                    fee_eur_est,
+                                    order_eur,
+                                )
+                                stats["skipped"] += 1
+                                continue
                             try:
                                 tag = " [DRY RUN]" if dry_run else ""
                                 lim_params = _limit_order_params()

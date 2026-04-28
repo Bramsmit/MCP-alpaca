@@ -40,7 +40,10 @@ from bot_live.config import (
     LEVELS_LOOKBACK_DAYS,
     BUY_ABOVE_LOW_PCT,
     SELL_BELOW_HIGH_PCT,
-    MIN_SPREAD_PCT,
+    ALPACA_CRYPTO_MIN_ORDER_REF_USD,
+    ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
+    ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT,
+    required_min_spread_fraction_crypto_usd,
     STOP_LOSS_PER_UNIT,
     ORDER_UPDATE_THRESHOLD,
     ORDER_MAX_AGE_HOURS,
@@ -66,7 +69,9 @@ from bot_live.alpaca_runtime import (
 )
 
 
-def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, float]]:
+def get_24h_levels(
+    data_client, symbols: list[str], min_spread_frac: float
+) -> dict[str, tuple[float, float]]:
     """Haal vorige dag high/low op voor buy/sell niveaus."""
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=5)
@@ -92,12 +97,14 @@ def get_24h_levels(data_client, symbols: list[str]) -> dict[str, tuple[float, fl
         high = float(recent["high"].mean())
         buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
         sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-        if sell_level >= buy_level * (1 + MIN_SPREAD_PCT):
+        if sell_level >= buy_level * (1 + min_spread_frac):
             result[symbol] = (buy_level, sell_level)
     return result
 
 
-def _get_levels_and_scores(data_client, symbols: list[str]) -> dict[str, tuple[float, float, float]]:
+def _get_levels_and_scores(
+    data_client, symbols: list[str], min_spread_frac: float
+) -> dict[str, tuple[float, float, float]]:
     """Levels + score per symbol. score = spread_pct * (1 + range_volatility)."""
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=5)
@@ -121,7 +128,7 @@ def _get_levels_and_scores(data_client, symbols: list[str]) -> dict[str, tuple[f
         high = float(recent["high"].mean())
         buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
         sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
-        spread_ok = sell_level >= buy_level * (1 + MIN_SPREAD_PCT)
+        spread_ok = sell_level >= buy_level * (1 + min_spread_frac)
         spread_pct = (sell_level - buy_level) / buy_level if spread_ok else 0
         range_pct = (high - low) / low if low else 0
         score = spread_pct * (1 + range_pct)
@@ -130,14 +137,19 @@ def _get_levels_and_scores(data_client, symbols: list[str]) -> dict[str, tuple[f
 
 
 def select_top_symbols(
-    data_client, trading_client, pool: list[str], n: int
+    data_client,
+    trading_client,
+    pool: list[str],
+    n: int,
+    ref_notional_usd: float,
 ) -> tuple[list[str], dict[str, tuple[float, float]]]:
     """
     Selecteer top N meest winstgevende symbolen uit pool.
     Symbolen met open posities blijven altijd actief.
     Retourneert (symbols, levels).
     """
-    levels_scored = _get_levels_and_scores(data_client, pool)
+    min_spread_frac = required_min_spread_fraction_crypto_usd(ref_notional_usd)
+    levels_scored = _get_levels_and_scores(data_client, pool, min_spread_frac)
     positions = get_positions(trading_client, symbols=pool)
     symbols_with_positions = set(positions.keys())
 
@@ -157,7 +169,7 @@ def select_top_symbols(
     # Voor symbolen met posities zonder levels (geen bar data): haal levels apart op
     missing = [s for s in selected if s not in levels]
     if missing:
-        fallback = get_24h_levels(data_client, missing)
+        fallback = get_24h_levels(data_client, missing, min_spread_frac)
         levels.update(fallback)
     return selected, levels
 
@@ -180,9 +192,14 @@ def run_once():
     """Eén run van de trading bot."""
     trading_client, data_client = get_trading_clients()
 
+    buying_power_pre = get_buying_power(trading_client)
+    cap_target = (buying_power_pre / SYMBOLS_ACTIVE) * 0.995
+    est_order_usd = min(cap_target, max(0.0, buying_power_pre * 0.99))
+    ref_usd = max(ALPACA_CRYPTO_MIN_ORDER_REF_USD, est_order_usd) if est_order_usd > 0 else cap_target
+
     # Selecteer top N meest winstgevende symbolen uit pool
     symbols, levels = select_top_symbols(
-        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE
+        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE, ref_usd
     )
     if not symbols:
         log.warning("Geen symbolen geselecteerd uit pool")
@@ -200,6 +217,12 @@ def run_once():
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
     log.info("Geselecteerd: %s", ", ".join(symbols))
+    log.info(
+        "Spread-drempel: ref-notional $%.2f → min. spread %.2f%% (incl. vast $%.2f round-trip + maker-%%)",
+        ref_usd,
+        required_min_spread_fraction_crypto_usd(ref_usd) * 100,
+        ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
+    )
     log.info("Buying power: $%.2f | Per asset: $%.2f", buying_power, capital_per)
     log.info("Levels: %s", levels)
     log.info("Current prices: %s", current_prices)
@@ -412,6 +435,25 @@ def run_once():
                     # Na cancel: wacht tot balance vrijkomt
                     if existing_buy and ORDER_REPLACE_DELAY_SEC > 0:
                         time.sleep(ORDER_REPLACE_DELAY_SEC)
+                    spread_frac = (
+                        (sell_level - buy_level) / buy_level if buy_level > 0 else 0
+                    )
+                    gross_usd_est = capital_per * spread_frac
+                    fee_usd_est = (
+                        ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD
+                        + capital_per * ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT
+                    )
+                    if gross_usd_est < fee_usd_est:
+                        log.warning(
+                            "  %s: Buy overgeslagen: geschatte bruto $%.2f < fees $%.2f "
+                            "(levels vs order $%.2f)",
+                            symbol,
+                            gross_usd_est,
+                            fee_usd_est,
+                            capital_per,
+                        )
+                        stats["skipped"] += 1
+                        continue
                     qty = capital_per / buy_level
                     limit_px = _round_price(buy_level)
                     try:

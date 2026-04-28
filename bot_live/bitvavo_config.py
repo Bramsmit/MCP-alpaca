@@ -29,8 +29,28 @@ MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop (bruto)
 # - Telegram/journal PnL-schatting op sell (maker beide zijden)
 FEE_MAKER_PCT = 0.0015      # 0,15% — typische startfee EUR-markten cat. A
 FEE_TAKER_PCT = 0.0025      # 0,25% — alleen ter referentie / logging
-# Round-trip bij passieve limits: koop + verkoop als maker
+# Round-trip bij passieve limits: koop + verkoop als maker (%)
 ESTIMATED_ROUND_TRIP_FEE_PCT = FEE_MAKER_PCT * 2
+
+# Vaste fee per zijde (EUR): bij kleine notionals domineert dit boven %-tarief.
+# Spread-check gebruikt max(strategie-%, vaste€/notional) + %-round-trip zodat
+# je niet verkoopt als bruto-marge onder circa €0,50 blijft (pas aan naar jouw tier).
+FEE_FIXED_PER_SIDE_EUR = 0.25
+ROUND_TRIP_FIXED_FEE_EUR = FEE_FIXED_PER_SIDE_EUR * 2
+
+# Conservatieve ondergrens voor spread-check bij lage balance (Bitvavo minimum-ordergebied).
+MIN_ORDER_REF_EUR = 5.0
+
+
+def required_min_spread_fraction(ref_notional_eur: float) -> float:
+    """
+    Minimale relatieve spread (sell vs buy level) zodat geschatte bruto winst in EUR
+    de maker-%-fees én vaste round-trip € dekt.
+    ref_notional_eur ≈ verwachte ordergrootte (kleinste order = strengste eis).
+    """
+    ref = float(ref_notional_eur) if ref_notional_eur and ref_notional_eur > 0 else MIN_ORDER_REF_EUR
+    ref = max(MIN_ORDER_REF_EUR, ref)
+    return max(MIN_SPREAD_PCT, ROUND_TRIP_FIXED_FEE_EUR / ref) + ESTIMATED_ROUND_TRIP_FEE_PCT
 
 # Limit orders: postOnly=True houdt maker-tarief; order wordt geannuleerd als hij taker zou zijn
 POST_ONLY_LIMIT_ORDERS = True

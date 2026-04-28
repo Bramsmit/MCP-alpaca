@@ -37,6 +37,27 @@ BITVAVO_FEE_BUY_RATE = BITVAVO_MAKER_FEE_RATE
 BITVAVO_FEE_SELL_LIMIT_RATE = BITVAVO_MAKER_FEE_RATE
 BITVAVO_FEE_SELL_TAKER_RATE = BITVAVO_TAKER_FEE_RATE
 
+# Alpaca crypto: %-maker + vaste USD per zijde (kleine orders). Tier zelf afstemmen.
+ALPACA_CRYPTO_MIN_ORDER_REF_USD = 5.0
+ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD = 0.25
+ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD = ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD * 2
+ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT = BITVAVO_MAKER_FEE_RATE * 2
+
+
+def required_min_spread_fraction_crypto_usd(ref_notional_usd: float) -> float:
+    """Min. relatieve spread (sell vs buy); zelfde model als bitvavo_config."""
+    ref = (
+        float(ref_notional_usd)
+        if ref_notional_usd and ref_notional_usd > 0
+        else ALPACA_CRYPTO_MIN_ORDER_REF_USD
+    )
+    ref = max(ALPACA_CRYPTO_MIN_ORDER_REF_USD, ref)
+    return (
+        max(MIN_SPREAD_PCT, ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD / ref)
+        + ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT
+    )
+
+
 # Stop-loss: vast bedrag per eenheid onder koopniveau
 # Backtest beste: $0.01/eenheid
 STOP_LOSS_PER_UNIT = 0.01
