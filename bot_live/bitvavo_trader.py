@@ -93,44 +93,89 @@ def get_balance(exchange) -> float:
 
 def get_portfolio_value(exchange) -> float:
     """
-    Portfoliowaarde van het bot-gedeelte in EUR (max MAX_CAPITAL_EUR).
-    = waarde crypto posities (SYMBOL_POOL) + EUR in open buy orders + resterende vrije EUR (gemaximeerd).
-    Toont NIET de rest van het Kraken account.
+    Totale Bitvavo-accountwaarde in EUR: alle saldi × actuele EUR-prijs
+    (`total` = free + used, dus ook vast in orders). Geen cap op bot-budget.
     """
     b = exchange.fetch_balance()
+    total_eur = 0.0
+    for code, bal in b.items():
+        if code == "info" or not isinstance(bal, dict):
+            continue
+        amt = float(bal.get("total", 0) or 0)
+        if amt <= 1e-12:
+            continue
+        if code == "EUR":
+            total_eur += amt
+            continue
+        symbol = f"{code}/EUR"
+        try:
+            if symbol not in exchange.markets:
+                log.warning("Geen EUR-markt voor %s — saldo niet in portfoliototaal", code)
+                continue
+            ticker = exchange.fetch_ticker(symbol)
+            px = float(ticker.get("last") or 0)
+            if not px:
+                bid = float(ticker.get("bid") or 0)
+                ask = float(ticker.get("ask") or 0)
+                px = (bid + ask) / 2 if bid and ask else 0.0
+            if px:
+                total_eur += amt * px
+        except Exception as e:
+            log.warning("Portfolio tick %s: %s", symbol, e)
+    return total_eur
 
-    # Waarde van crypto posities in SYMBOL_POOL
-    crypto_value = 0.0
-    for symbol in SYMBOL_POOL:
-        base = symbol.split("/")[0]
-        qty = float(b.get(base, {}).get("total", 0) or 0)
-        if qty > 0:
-            try:
-                ticker = exchange.fetch_ticker(symbol)
-                price = float(ticker.get("last") or 0)
-                crypto_value += qty * price
-            except Exception:
-                pass
 
-    # EUR gelocked in open buy orders (bot-geplaatst)
-    eur_in_orders = 0.0
-    try:
-        for symbol in SYMBOL_POOL:
-            orders = exchange.fetch_open_orders(symbol)
-            for o in orders:
-                if o.get("side") == "buy":
-                    amount = float(o.get("amount") or 0)
-                    price = float(o.get("price") or 0)
-                    eur_in_orders += amount * price
-    except Exception:
-        pass
+def _trade_fee_in_eur(exchange, trade: dict, symbol: str) -> float | None:
+    """Haal transactiekosten uit ccxt trade; retourneer bedrag in EUR of None."""
+    base = symbol.split("/")[0].upper()
 
-    # Vrije EUR, gemaximeerd op MAX_CAPITAL_EUR minus al ingezet kapitaal
-    free_eur = float(b.get("EUR", {}).get("free", 0) or 0)
-    deployed = crypto_value + eur_in_orders
-    free_eur_for_bot = min(free_eur, max(0.0, MAX_CAPITAL_EUR - deployed))
+    def _one(cost: float, currency: str | None) -> float | None:
+        if cost is None:
+            return None
+        if cost <= 0:
+            return 0.0
+        cur = (currency or "EUR").upper()
+        if cur == "EUR":
+            return float(cost)
+        if cur == base:
+            px = float(trade.get("price") or 0)
+            return float(cost) * px if px else None
+        pair = f"{cur}/EUR"
+        try:
+            if pair in exchange.markets:
+                tk = exchange.fetch_ticker(pair)
+                px = float(tk.get("last") or 0)
+                if not px:
+                    b = float(tk.get("bid") or 0)
+                    a = float(tk.get("ask") or 0)
+                    px = (b + a) / 2 if b and a else 0.0
+                if px:
+                    return float(cost) * px
+        except Exception:
+            pass
+        return None
 
-    return crypto_value + eur_in_orders + free_eur_for_bot
+    fee = trade.get("fee")
+    if fee and fee.get("cost") is not None:
+        v = _one(float(fee["cost"]), fee.get("currency"))
+        if v is not None:
+            return v
+    raw_fees = trade.get("fees")
+    if raw_fees:
+        parts: list[float] = []
+        ambiguous = False
+        for f in raw_fees:
+            c = f.get("cost")
+            if c is None:
+                continue
+            part = _one(float(c), f.get("currency"))
+            if part is None:
+                ambiguous = True
+            else:
+                parts.append(part)
+        if parts and not ambiguous:
+            return sum(parts)
+    return None
 
 
 def get_current_prices(exchange, symbols: list[str]) -> dict[str, float]:
@@ -370,8 +415,6 @@ def _check_and_notify_filled_trades(
         new_notified = []
         new_count = 0
 
-        portfolio_value = get_portfolio_value(exchange)
-
         for symbol in symbols:
             try:
                 trades = exchange.fetch_my_trades(symbol, since=since_ms)
@@ -408,6 +451,11 @@ def _check_and_notify_filled_trades(
                 elif side == "buy":
                     entries[symbol] = {"qty": qty, "entry": price}
 
+                raw_fee = _trade_fee_in_eur(exchange, t, symbol)
+                fee_estimated = raw_fee is None
+                fee_eur = raw_fee if raw_fee is not None else qty * price * FEE_MAKER_PCT
+                portfolio_value = get_portfolio_value(exchange)
+
                 notify_trade_filled(
                     side,
                     symbol,
@@ -416,6 +464,8 @@ def _check_and_notify_filled_trades(
                     profit,
                     portfolio_value,
                     entry_price=entry_price_for_log,
+                    fee_eur=fee_eur,
+                    fee_estimated=fee_estimated,
                 )
                 log_trade(
                     order_id=tid,
@@ -426,6 +476,7 @@ def _check_and_notify_filled_trades(
                     entry_price=entry_price_for_log,
                     profit=profit,
                     portfolio_value=portfolio_value,
+                    fee_eur=fee_eur,
                     journal_filename=_BITVAVO_JOURNAL_FILE,
                 )
                 new_notified.append(tid)

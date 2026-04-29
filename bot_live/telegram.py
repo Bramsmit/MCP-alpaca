@@ -73,6 +73,8 @@ def notify_trade_filled(
     profit: float | None,
     portfolio_value: float,
     entry_price: float | None = None,
+    fee_eur: float | None = None,
+    fee_estimated: bool = False,
 ) -> bool:
     """Stuur een notificatie bij een gevulde trade."""
     q = _quote_for_symbol(symbol)
@@ -85,8 +87,16 @@ def notify_trade_filled(
         else:
             entry_val = price * qty - profit
             pct = (profit / entry_val * 100) if entry_val else 0
-        msg += f"\n💰 Netto (Bitvavo fees): {q}{profit:.2f} ({pct:+.1f}%)"
-    msg += f"\n📊 Totaal portfolio: {q}{portfolio_value:.2f}"
+        msg += (
+            f"\n💰 Netto (incl. geschatte round-trip): "
+            f"{q}{profit:.2f} ({pct:+.1f}%)"
+        )
+    if fee_eur is not None:
+        tag = " (≈ maker)" if fee_estimated else ""
+        msg += f"\n💸 Transactiekosten: {q}{fee_eur:.2f}{tag}"
+    msg += (
+        f"\n📊 Totaal portfolio (account EUR): {q}{portfolio_value:.2f}"
+    )
     return send_telegram(msg)
 
 

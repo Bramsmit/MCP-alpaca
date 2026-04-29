@@ -31,6 +31,7 @@ def log_trade(
     entry_price: float | None,
     profit: float | None,
     portfolio_value: float,
+    fee_eur: float | None = None,
     journal_filename: str = "trades.jsonl",
 ) -> None:
     """Schrijf één gevulde trade append naar journal_filename (onder repo-root)."""
@@ -50,6 +51,7 @@ def log_trade(
         "profit": round(profit, 4) if profit is not None else None,
         "profit_pct": profit_pct,
         "portfolio_value": round(portfolio_value, 2),
+        "fee_eur": round(fee_eur, 4) if fee_eur is not None else None,
     }
 
     try:
