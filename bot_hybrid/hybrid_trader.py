@@ -43,16 +43,16 @@ from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
 from alpaca.trading.requests import LimitOrderRequest
 
-from bot_hybrid import range_strategy, trend_strategy
 from bot_live.config import (
     SYMBOL_POOL,
     SYMBOLS_ACTIVE,
     CAPITAL_PER_ASSET,
     HYBRID_ENABLED,
     ADX_PERIOD,
-    ADX_TREND_THRESHOLD,
-    ADX_RANGE_THRESHOLD,
-    REGIME_CONFIRMATION_BARS,
+    HYBRID_ADX_TREND_THRESHOLD,
+    HYBRID_ADX_RANGE_THRESHOLD,
+    HYBRID_REGIME_CONFIRMATION_BARS,
+    HYBRID_RANGE_LOOKBACK_HOURS,
     EMA_FAST,
     EMA_SLOW,
     RANGE_LOOKBACK_HOURS,
@@ -81,6 +81,7 @@ from bot_hybrid.market_regime_detector import (
     get_prev_regime,
 )
 from bot_hybrid.strategy_base import StrategyContext, StrategySignal
+from bot_live.hybrid_signals import pick_hybrid_signal
 from bot_live.telegram import send_telegram
 
 
@@ -299,7 +300,7 @@ def run_once() -> dict:
     # Check filled orders van vorige run (journal + Telegram)
     new_trades = _check_and_notify_filled_orders(trading_client, SYMBOL_POOL)
 
-    bars_needed = max(ADX_PERIOD * 4, EMA_SLOW * 3, RANGE_LOOKBACK_HOURS) + 24
+    bars_needed = max(ADX_PERIOD * 4, EMA_SLOW * 3, RANGE_LOOKBACK_HOURS, HYBRID_RANGE_LOOKBACK_HOURS) + 24
     bars = fetch_hourly_bars(data_client, SYMBOL_POOL, bars_needed)
     if not bars:
         log.warning("Geen hourly bars ontvangen")
@@ -350,9 +351,9 @@ def run_once() -> dict:
             df,
             prev_regime=prev_regime,
             adx_period=ADX_PERIOD,
-            trend_threshold=ADX_TREND_THRESHOLD,
-            range_threshold=ADX_RANGE_THRESHOLD,
-            confirmation_bars=REGIME_CONFIRMATION_BARS,
+            trend_threshold=HYBRID_ADX_TREND_THRESHOLD,
+            range_threshold=HYBRID_ADX_RANGE_THRESHOLD,
+            confirmation_bars=HYBRID_REGIME_CONFIRMATION_BARS,
             ema_fast_period=EMA_FAST,
             ema_slow_period=EMA_SLOW,
         )
@@ -386,48 +387,7 @@ def run_once() -> dict:
             highest_close_since_entry=highest_close,
         )
 
-        if snap.regime == "TRENDING_UP":
-            signal = trend_strategy.generate_signal(df, ctx)
-            strategy_label = "trend"
-        elif snap.regime == "RANGING":
-            signal = range_strategy.generate_signal(df, ctx)
-            strategy_label = "range"
-        elif snap.regime == "TRENDING_DOWN":
-            # Long-only: als we een positie hebben tijdens TRENDING_DOWN: exit.
-            if has_position:
-                signal = StrategySignal(
-                    action="exit_now",
-                    strategy="trend",
-                    exit_price=price,
-                    reason=f"regime flipte naar TRENDING_DOWN (ADX={snap.adx:.1f})",
-                )
-                strategy_label = "trend"
-            else:
-                signal = StrategySignal(
-                    action="hold",
-                    strategy="none",
-                    reason="TRENDING_DOWN: long-only bot zit aan de kant",
-                )
-                strategy_label = "none"
-        else:  # UNCERTAIN
-            # Veilig blijven: bestaande posities onderhouden via range-logica
-            # (tight sell), geen nieuwe entries.
-            if has_position:
-                signal = range_strategy.generate_signal(df, ctx)
-                if signal.action == "enter_long":
-                    signal = StrategySignal(
-                        action="hold",
-                        strategy="none",
-                        reason="UNCERTAIN regime: geen nieuwe entries",
-                    )
-                strategy_label = "range"
-            else:
-                signal = StrategySignal(
-                    action="hold",
-                    strategy="none",
-                    reason="UNCERTAIN regime: wachten op bevestiging",
-                )
-                strategy_label = "none"
+        signal, strategy_label = pick_hybrid_signal(df, ctx, snap)
 
         # Execute
         open_orders = get_open_orders(trading_client, symbol)

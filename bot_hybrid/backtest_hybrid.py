@@ -45,15 +45,18 @@ from bot_live.config import (
     CAPITAL_PER_ASSET,
     BACKTEST_MONTHS,
     ADX_PERIOD,
-    ADX_TREND_THRESHOLD,
-    ADX_RANGE_THRESHOLD,
     REGIME_CONFIRMATION_BARS,
+    HYBRID_ADX_TREND_THRESHOLD,
+    HYBRID_ADX_RANGE_THRESHOLD,
+    HYBRID_REGIME_CONFIRMATION_BARS,
+    HYBRID_RANGE_LOOKBACK_HOURS,
+    RANGE_LOOKBACK_HOURS,
     EMA_FAST,
     EMA_SLOW,
-    RANGE_LOOKBACK_HOURS,
 )
 from bot_hybrid.market_regime_detector import detect_regime
 from bot_hybrid.strategy_base import StrategyContext, StrategySignal
+from bot_live.hybrid_signals import pick_hybrid_signal
 
 
 Mode = Literal["range_only", "trend_only", "hybrid"]
@@ -156,32 +159,19 @@ class _SimState:
 
 
 def _pick_signal(mode: Mode, regime: str, df: pd.DataFrame, ctx: StrategyContext) -> tuple[StrategySignal, str]:
-    """Kies welke strategy draait, afhankelijk van de mode én (voor hybrid) het regime."""
+    """Alleen voor range_only / trend_only (hybrid gebruikt pick_hybrid_signal)."""
     if mode == "range_only":
         return range_strategy.generate_signal(df, ctx), "range"
     if mode == "trend_only":
         return trend_strategy.generate_signal(df, ctx), "trend"
-    # hybrid
-    if regime == "TRENDING_UP":
-        return trend_strategy.generate_signal(df, ctx), "trend"
-    if regime == "RANGING":
-        return range_strategy.generate_signal(df, ctx), "range"
-    if regime == "TRENDING_DOWN" and ctx.has_position:
-        return (
-            StrategySignal(
-                action="exit_now",
-                strategy="trend",
-                exit_price=ctx.current_price,
-                reason="regime TRENDING_DOWN; long-only exit",
-            ),
-            "trend",
-        )
-    return StrategySignal(action="hold", reason=f"regime={regime}, geen actie"), "none"
+    raise ValueError(f"onverwachte mode voor _pick_signal: {mode}")
 
 
 def run_backtest(df: pd.DataFrame, symbol: str, capital: float, mode: Mode) -> SymbolResult:
     """Simuleer één symbool bar-voor-bar."""
-    warmup = max(EMA_SLOW * 2, ADX_PERIOD * 3, RANGE_LOOKBACK_HOURS) + REGIME_CONFIRMATION_BARS
+    warm_lookback = max(RANGE_LOOKBACK_HOURS, HYBRID_RANGE_LOOKBACK_HOURS) if mode == "hybrid" else RANGE_LOOKBACK_HOURS
+    warm_confirm = HYBRID_REGIME_CONFIRMATION_BARS if mode == "hybrid" else REGIME_CONFIRMATION_BARS
+    warmup = max(EMA_SLOW * 2, ADX_PERIOD * 3, warm_lookback) + warm_confirm
     if len(df) <= warmup + 2:
         empty = pd.Series(dtype=float)
         return SymbolResult(symbol, mode, capital, capital, 0, 0, empty, [])
@@ -259,16 +249,17 @@ def run_backtest(df: pd.DataFrame, symbol: str, capital: float, mode: Mode) -> S
                 window,
                 prev_regime=st.prev_regime,
                 adx_period=ADX_PERIOD,
-                trend_threshold=ADX_TREND_THRESHOLD,
-                range_threshold=ADX_RANGE_THRESHOLD,
-                confirmation_bars=REGIME_CONFIRMATION_BARS,
+                trend_threshold=HYBRID_ADX_TREND_THRESHOLD,
+                range_threshold=HYBRID_ADX_RANGE_THRESHOLD,
+                confirmation_bars=HYBRID_REGIME_CONFIRMATION_BARS,
                 ema_fast_period=EMA_FAST,
                 ema_slow_period=EMA_SLOW,
             )
-            regime = snap.regime
-            st.prev_regime = regime
+            st.prev_regime = snap.regime
+        elif mode == "range_only":
+            st.prev_regime = "RANGING"
         else:
-            regime = "RANGING" if mode == "range_only" else "TRENDING_UP"
+            st.prev_regime = "TRENDING_UP"
 
         equity = st.cash + st.qty * close
         ctx = StrategyContext(
@@ -281,7 +272,11 @@ def run_backtest(df: pd.DataFrame, symbol: str, capital: float, mode: Mode) -> S
             avg_entry_price=st.avg_entry,
             highest_close_since_entry=st.highest_close,
         )
-        signal, _strategy_label = _pick_signal(mode, regime, window, ctx)
+        if mode == "hybrid":
+            signal, _strategy_label = pick_hybrid_signal(window, ctx, snap)
+        else:
+            regime = st.prev_regime
+            signal, _strategy_label = _pick_signal(mode, regime, window, ctx)
 
         # ---------- Apply signal to pending orders for next bar ----------
         if signal.action == "enter_long" and st.qty == 0 and signal.entry_price and signal.qty:

@@ -19,6 +19,8 @@ from bot_live.config import (
     SELL_BELOW_HIGH_PCT,
     MIN_SPREAD_PCT,
     RANGE_LOOKBACK_HOURS,
+    HYBRID_RANGE_LOOKBACK_HOURS,
+    HYBRID_MIN_SPREAD_PCT,
     RANGE_STOP_ATR_MULT,
     RISK_PER_TRADE_PCT,
     ADX_PERIOD,
@@ -28,7 +30,12 @@ from bot_hybrid.risk_manager import position_size, range_stop_profile
 from bot_hybrid.strategy_base import StrategyContext, StrategySignal
 
 
-def compute_hourly_levels(df: pd.DataFrame, lookback: int = RANGE_LOOKBACK_HOURS) -> tuple[float, float, float] | None:
+def compute_hourly_levels(
+    df: pd.DataFrame,
+    lookback: int = RANGE_LOOKBACK_HOURS,
+    *,
+    min_spread_pct: float = MIN_SPREAD_PCT,
+) -> tuple[float, float, float] | None:
     """(buy_level, sell_level, atr_value) of None als spread onvoldoende / te weinig data."""
     if len(df) < max(lookback, ADX_PERIOD * 2):
         return None
@@ -39,7 +46,7 @@ def compute_hourly_levels(df: pd.DataFrame, lookback: int = RANGE_LOOKBACK_HOURS
     buy_level = low * (1 + BUY_ABOVE_LOW_PCT)
     sell_level = high * (1 - SELL_BELOW_HIGH_PCT)
 
-    if sell_level < buy_level * (1 + MIN_SPREAD_PCT):
+    if sell_level < buy_level * (1 + min_spread_pct):
         return None
 
     atr_series = atr_indicator(df, ADX_PERIOD)
@@ -50,14 +57,21 @@ def compute_hourly_levels(df: pd.DataFrame, lookback: int = RANGE_LOOKBACK_HOURS
 def generate_signal(
     df: pd.DataFrame,
     ctx: StrategyContext,
+    *,
+    hybrid_range: bool = False,
 ) -> StrategySignal:
-    """Genereer één signaal voor het range-regime."""
-    levels = compute_hourly_levels(df)
+    """Genereer één signaal voor het range-regime.
+
+    hybrid_range=True: gebruik HYBRID_* venster/spread (alleen hybrid_trader).
+    """
+    lb = HYBRID_RANGE_LOOKBACK_HOURS if hybrid_range else RANGE_LOOKBACK_HOURS
+    msp = HYBRID_MIN_SPREAD_PCT if hybrid_range else MIN_SPREAD_PCT
+    levels = compute_hourly_levels(df, lookback=lb, min_spread_pct=msp)
     if levels is None:
         return StrategySignal(
             action="skip",
             strategy="range",
-            reason=f"onvoldoende spread of data (lookback={RANGE_LOOKBACK_HOURS}h)",
+            reason=f"onvoldoende spread of data (lookback={lb}h, hybrid_range={hybrid_range})",
         )
 
     buy_level, sell_level, atr_value = levels
