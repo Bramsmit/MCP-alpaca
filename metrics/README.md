@@ -14,6 +14,20 @@ python -m metrics.bitvavo_compare metrics metrics/output/bitvavo_journal.csv --l
 
 Details: [`bitvavo_compare/README.md`](bitvavo_compare/README.md).
 
+### Run-audits Alpaca vs Bitvavo (levels, stats per uur)
+
+Bron: repo-root **`alpaca_runs.jsonl`** en **`bitvavo_runs.jsonl`** (geschreven door de bots).
+
+```bash
+python -m metrics.run_compare --days 14
+python -m metrics.run_compare --start 2026-04-01 --end 2026-04-30
+```
+
+Uitvoer onder **`metrics/output/`** (gitignored behalve `.gitkeep`):
+
+- **`run_compare_summary.md`** — leesbare vergelijking
+- **`run_compare_timeline.json`** — volledige runs in het venster + totalen
+
 ### Alleen Bitvavo (EUR) — volledige historie voor analyse
 
 ```bash

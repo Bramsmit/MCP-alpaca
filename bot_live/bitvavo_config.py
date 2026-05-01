@@ -14,8 +14,10 @@ SYMBOL_POOL = [
     "AVAX/EUR",
     "DOT/EUR",
     "UNI/EUR",
+    "AAVE/EUR",
     "DOGE/EUR",
     "LTC/EUR",
+    "CRV/EUR",
     "BCH/EUR",
 ]
 

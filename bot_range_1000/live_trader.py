@@ -67,6 +67,7 @@ from bot_live.alpaca_runtime import (
     _save_state,
     MIN_SELLABLE_CRYPTO_QTY,
 )
+from bot_live.run_audit import ALPACA_RUNS_JSONL, log_run_audit
 
 
 def get_24h_levels(
@@ -204,6 +205,14 @@ def run_once():
     if not symbols:
         log.warning("Geen symbolen geselecteerd uit pool")
         send_telegram("⚠️ Geen symbolen geselecteerd uit pool")
+        log_run_audit(
+            {
+                "bot": "alpaca_range",
+                "paper": os.environ.get("ALPACA_PAPER_TRADE", "True"),
+                "event": "no_symbols_selected",
+            },
+            filename=ALPACA_RUNS_JSONL,
+        )
         return {}
 
     new_trades = _check_and_notify_filled_orders(trading_client, SYMBOL_POOL)
@@ -486,6 +495,41 @@ def run_once():
     if symbols:
         summary += f"\nActief: {', '.join(symbols)}"
     log.info(summary)
+
+    positions_final = get_positions(trading_client, symbols=symbols)
+    portfolio_usd = get_portfolio_value(trading_client)
+    buying_final = get_buying_power(trading_client)
+    levels_snap = {
+        s: [round(float(levels[s][0]), 8), round(float(levels[s][1]), 8)]
+        for s in symbols
+        if s in levels
+    }
+    pos_snap = {
+        s: {
+            "qty": round(float(q), 8),
+            "avg_entry": round(float(e), 8),
+        }
+        for s, (q, e) in positions_final.items()
+    }
+    log_run_audit(
+        {
+            "bot": "alpaca_range",
+            "paper": os.environ.get("ALPACA_PAPER_TRADE", "True"),
+            "fills_new_this_run": new_trades,
+            "symbols": list(symbols),
+            "levels": levels_snap,
+            "mid_prices": {k: round(float(v), 8) for k, v in current_prices.items()},
+            "positions": pos_snap,
+            "stats": dict(stats),
+            "ref_notional_usd": round(float(ref_usd), 4),
+            "buying_power_usd": round(buying_final, 4),
+            "capital_per_usd": round(float(capital_per), 4),
+            "portfolio_value_usd": round(portfolio_usd, 2),
+            "summary_text": summary,
+        },
+        filename=ALPACA_RUNS_JSONL,
+    )
+
     send_telegram(f"📋 {summary}")
     return stats
 

@@ -52,6 +52,7 @@ from bot_live.bitvavo_config import (
 )
 from bot_live.telegram import send_telegram, notify_trade_filled
 from bot_live.journal import log_trade
+from bot_live.run_audit import BITVAVO_RUNS_JSONL, log_run_audit
 
 # Aparte state/journal bestanden voor Bitvavo (los van Alpaca)
 _BITVAVO_STATE_FILE = ".bitvavo_trade_state.json"
@@ -511,6 +512,14 @@ def run_once():
     if not symbols:
         log.warning("Geen symbolen geselecteerd")
         send_telegram("⚠️ Geen symbolen geselecteerd uit pool")
+        log_run_audit(
+            {
+                "bot": "bitvavo",
+                "dry_run": dry_run,
+                "event": "no_symbols_selected",
+            },
+            filename=BITVAVO_RUNS_JSONL,
+        )
         return {}
 
     new_trades, state_entries = _check_and_notify_filled_trades(exchange, SYMBOL_POOL, state_entries)
@@ -827,6 +836,42 @@ def run_once():
     if symbols:
         summary += f"\nActief: {', '.join(symbols)}"
     log.info(summary)
+
+    positions_final = get_positions(exchange, symbols)
+    portfolio_eur = get_portfolio_value(exchange)
+    balance_final = get_balance(exchange)
+    levels_snap = {
+        s: [round(float(levels[s][0]), 8), round(float(levels[s][1]), 8)]
+        for s in symbols
+        if s in levels
+    }
+    log_run_audit(
+        {
+            "bot": "bitvavo",
+            "dry_run": dry_run,
+            "fills_new_this_run": new_trades,
+            "symbols": list(symbols),
+            "levels": levels_snap,
+            "mid_prices": {k: round(float(v), 8) for k, v in current_prices.items()},
+            "positions_qty": {k: round(float(v), 8) for k, v in positions_final.items()},
+            "state_entries": {
+                k: {
+                    "qty": round(float(v.get("qty", 0)), 8),
+                    "entry": round(float(v.get("entry", 0)), 8),
+                }
+                for k, v in state_entries.items()
+            },
+            "bot_orders": bot_orders,
+            "stats": dict(stats),
+            "ref_notional_eur": round(float(ref_notional), 4),
+            "balance_eur_free": round(balance_final, 4),
+            "portfolio_value_eur": round(portfolio_eur, 2),
+            "capital_per_eur": round(capital_per, 4),
+            "summary_text": summary,
+        },
+        filename=BITVAVO_RUNS_JSONL,
+    )
+
     send_telegram(f"📋 {summary}")
     return stats
 
