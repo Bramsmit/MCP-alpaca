@@ -18,5 +18,6 @@ alwaysApply: true
 ## Bitvavo
 
 - Bitvavo-bot en EUR-config: **`bot_live/bitvavo_*.py`**, niet onder `bot_range_1000`.
+- Standaard **post-only uit** (`POST_ONLY_LIMIT_ORDERS=False`), dichter bij Alpaca-limits; optioneel **`BITVAVO_POST_ONLY`** secret in Actions.
 - Journal naar CSV / metrics (alleen EUR-rijen uit JSONL): **`python -m metrics.bitvavo_compare`** — [`metrics/bitvavo_compare/README.md`](metrics/bitvavo_compare/README.md).
 - Run-audit JSONL (uurlijks): **`bitvavo_runs.jsonl`** / **`alpaca_runs.jsonl`** via **`bot_live/run_audit.py`**; vergelijken: **`python -m metrics.run_compare`** → `metrics/output/`.

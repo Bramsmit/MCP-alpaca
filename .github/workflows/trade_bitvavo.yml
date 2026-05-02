@@ -39,6 +39,9 @@ jobs:
           BITVAVO_API_KEY: ${{ secrets.BITVAVO_API_KEY }}
           BITVAVO_SECRET_KEY: ${{ secrets.BITVAVO_SECRET_KEY }}
           BITVAVO_DRY_RUN: ${{ secrets.BITVAVO_DRY_RUN }}
+          # Optioneel: true = streng maker-only; false = soepeler (Alpaca-achtiger).
+          # Leeg laten = gebruik bot_live/bitvavo_config.POST_ONLY_LIMIT_ORDERS.
+          BITVAVO_POST_ONLY: ${{ secrets.BITVAVO_POST_ONLY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.BITVAVO_TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}
         run: python -m bot_live.bitvavo_trader

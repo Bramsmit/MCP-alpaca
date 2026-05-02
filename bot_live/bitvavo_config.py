@@ -70,8 +70,12 @@ def required_min_spread_fraction(ref_notional_eur: float) -> float:
     ref = max(MIN_ORDER_REF_EUR, ref)
     return max(MIN_SPREAD_PCT, ROUND_TRIP_FIXED_FEE_EUR / ref) + ESTIMATED_ROUND_TRIP_FEE_PCT
 
-# Limit orders: postOnly=True houdt maker-tarief; order wordt geannuleerd als hij taker zou zijn
-POST_ONLY_LIMIT_ORDERS = True
+
+# postOnly op Bitvavo: bij True annuleert/wijst de exchange orders af die direct
+# taker zouden zijn → vaker maker-fee, maar minder vulling (anders dan Alpaca GTC).
+# False ≈ soepelere limits, dichter bij Alpaca; je kunt vaker taker-fee betalen.
+# Overschrijven per run: env BITVAVO_POST_ONLY=true of false (override deze default).
+POST_ONLY_LIMIT_ORDERS = False
 
 STOP_LOSS_PER_UNIT = 0.01
 

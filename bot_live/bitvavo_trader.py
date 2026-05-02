@@ -4,8 +4,8 @@ Bitvavo range-trading bot via ccxt.
 Plaatst limit buy/sell orders op basis van rolling 3-daags high/low.
 Draait 1x per uur via GitHub Actions.
 
-Fees/spread/postOnly staan in bot_live/bitvavo_config.py. Optioneel: env BITVAVO_POST_ONLY=false
-om postOnly uit te zetten als de exchange orders weigert.
+Fees/spread/postOnly: zie bot_live/bitvavo_config.py.
+Override post-only: env BITVAVO_POST_ONLY=true|false (default volgt config).
 """
 
 import json
@@ -336,10 +336,10 @@ def _round_price(exchange, symbol: str, price: float) -> float:
 
 
 def _limit_order_params() -> dict:
-    """postOnly=True: Bitvavo annuleert als de limit direct zou matchen (maker fee)."""
+    """Bitvavo limit params. postOnly=True → maker-only gedrag; {} → exchange default (soepeler)."""
     po = os.environ.get("BITVAVO_POST_ONLY")
     if po is not None and str(po).strip():
-        use_post_only = str(po).strip().lower() not in ("false", "0", "no")
+        use_post_only = str(po).strip().lower() not in ("false", "0", "no", "off")
     else:
         use_post_only = POST_ONLY_LIMIT_ORDERS
     return {"postOnly": True} if use_post_only else {}
@@ -496,6 +496,14 @@ def _check_and_notify_filled_trades(
 def run_once():
     """Eén run van de trading bot."""
     exchange, dry_run = get_exchange()
+
+    lim_p = _limit_order_params()
+    log.info(
+        "Limit orders: postOnly=%s (config POST_ONLY_LIMIT_ORDERS=%s, env BITVAVO_POST_ONLY=%r)",
+        lim_p.get("postOnly", False),
+        POST_ONLY_LIMIT_ORDERS,
+        os.environ.get("BITVAVO_POST_ONLY"),
+    )
 
     state = _load_state()
     state_entries = dict(state.get("entries", {}))
@@ -849,6 +857,7 @@ def run_once():
         {
             "bot": "bitvavo",
             "dry_run": dry_run,
+            "limit_post_only": bool(lim_p.get("postOnly")),
             "fills_new_this_run": new_trades,
             "symbols": list(symbols),
             "levels": levels_snap,
