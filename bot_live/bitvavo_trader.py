@@ -524,6 +524,7 @@ def run_once():
             {
                 "bot": "bitvavo",
                 "dry_run": dry_run,
+                "limit_post_only": bool(lim_p.get("postOnly")),
                 "event": "no_symbols_selected",
             },
             filename=BITVAVO_RUNS_JSONL,
