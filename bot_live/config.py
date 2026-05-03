@@ -42,6 +42,8 @@ ALPACA_CRYPTO_MIN_ORDER_REF_USD = 5.0
 ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD = 0.25
 ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD = ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD * 2
 ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT = BITVAVO_MAKER_FEE_RATE * 2
+# Journal/fills: uren terug naar closed orders (≥ interval Actions + marge).
+ALPACA_FILLED_ORDERS_LOOKBACK_HOURS = 72
 
 
 def required_min_spread_fraction_crypto_usd(ref_notional_usd: float) -> float:

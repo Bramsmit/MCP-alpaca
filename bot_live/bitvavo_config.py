@@ -59,6 +59,9 @@ ROUND_TRIP_FIXED_FEE_EUR = FEE_FIXED_PER_SIDE_EUR * 2
 # Conservatieve ondergrens voor spread-check bij lage balance (Bitvavo minimum-ordergebied).
 MIN_ORDER_REF_EUR = 5.0
 
+# Fills journal: fetch_my_trades sinds N uur (≥ uurlijkse Actions + uitloop).
+FILLS_LOOKBACK_HOURS = 72
+
 
 def required_min_spread_fraction(ref_notional_eur: float) -> float:
     """

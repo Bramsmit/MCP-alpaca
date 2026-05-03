@@ -58,6 +58,14 @@ def log_trade(
         path = _journal_path(journal_filename)
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
+            f.flush()
+        log.info(
+            "Journal %s: trade gelogd order_id=%s %s %s",
+            journal_filename,
+            order_id,
+            side,
+            symbol,
+        )
     except Exception as e:
         log.warning("Kon trade niet loggen naar journal: %s", e)
 

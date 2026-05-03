@@ -49,6 +49,7 @@ from bot_live.bitvavo_config import (
     ORDER_MAX_AGE_HOURS,
     ORDER_STALE_PRICE_THRESHOLD,
     ORDER_REPLACE_DELAY_SEC,
+    FILLS_LOOKBACK_HOURS,
 )
 from bot_live.telegram import send_telegram, notify_trade_filled
 from bot_live.journal import log_trade
@@ -405,11 +406,14 @@ def _check_and_notify_filled_trades(
     exchange, symbols: list[str], state_entries: dict
 ) -> tuple[int, dict]:
     """
-    Detecteer gevulde trades (fills) van de laatste 4 uur.
+    Detecteer gevulde trades (fills) sinds FILLS_LOOKBACK_HOURS.
     Stuurt Telegram notificatie per fill. Retourneert (aantal_nieuw, updated_entries).
     """
     try:
-        since_ms = int((datetime.now(timezone.utc) - timedelta(hours=4)).timestamp() * 1000)
+        since_ms = int(
+            (datetime.now(timezone.utc) - timedelta(hours=FILLS_LOOKBACK_HOURS)).timestamp()
+            * 1000
+        )
         state = _load_state()
         notified_ids = list(state.get("notified_trade_ids", []))
         entries = dict(state_entries)

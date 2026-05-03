@@ -33,6 +33,18 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m bot_range_1000.live_trader
 
+      - name: Upload journals
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpaca-journals-${{ github.run_id }}
+          path: |
+            trades.jsonl
+            alpaca_runs.jsonl
+            .alpaca_trade_state.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Notify on failure
         if: failure()
         run: |

@@ -46,6 +46,18 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}
         run: python -m bot_live.bitvavo_trader
 
+      - name: Artifact journals (download om te controleren)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitvavo-journals-${{ github.run_id }}
+          path: |
+            bitvavo_trades.jsonl
+            bitvavo_runs.jsonl
+            .bitvavo_trade_state.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Melding bij fout
         if: failure()
         run: |

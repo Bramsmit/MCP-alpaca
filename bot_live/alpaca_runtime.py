@@ -28,6 +28,7 @@ from alpaca.data.requests import CryptoLatestQuoteRequest
 from bot_live.config import (
     BITVAVO_FEE_BUY_RATE,
     BITVAVO_FEE_SELL_LIMIT_RATE,
+    ALPACA_FILLED_ORDERS_LOOKBACK_HOURS,
 )
 from bot_live.telegram import notify_trade_filled
 from bot_live.journal import log_trade
@@ -248,9 +249,12 @@ def _save_state(entries: dict | None = None, notified_ids: list[str] | None = No
 
 
 def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
-    """Gevulde orders → Telegram + journal. Retourneert aantal nieuwe trades."""
+    """Gevulde orders (laatste ALPACA_FILLED_ORDERS_LOOKBACK_HOURS u) → Telegram + journal."""
     try:
-        after = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
+        after = (
+            datetime.now(timezone.utc)
+            - timedelta(hours=ALPACA_FILLED_ORDERS_LOOKBACK_HOURS)
+        ).isoformat()
         req = GetOrdersRequest(status=QueryOrderStatus.CLOSED, after=after)
         orders = trading_client.get_orders(req)
         portfolio_value = get_portfolio_value(trading_client)
