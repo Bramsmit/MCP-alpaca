@@ -21,12 +21,22 @@ def pick_hybrid_signal(
 ) -> tuple[StrategySignal, str]:
     """
     Zelfde logica als `hybrid_trader.run_once` per symbool.
-    `range_strategy` krijgt `hybrid_range=True` voor lossere hourly-levels.
+    `range_strategy` krijgt `hybrid_range=True` voor hourly-levels plus fee-floor-spread.
+
+    Bij regime TRENDING_UP maar zonder verse trend-entry (golden cross enz.) wordt
+    range-MR gebruikt — lost “stabil/chop maar ADX/regime nog uptrend” op.
     """
     has_position = ctx.has_position
 
     if snap.regime == "TRENDING_UP":
-        return trend_strategy.generate_signal(df, ctx), "trend"
+        trend_sig = trend_strategy.generate_signal(df, ctx)
+        if has_position or trend_sig.action == "enter_long":
+            return trend_sig, "trend"
+        # Geen verse trend-entry maar regime kan blijven "up" (ADX-hysterese / consolidatie).
+        rng = range_strategy.generate_signal(df, ctx, hybrid_range=True)
+        if rng.action == "enter_long":
+            return rng, "range_fallback"
+        return trend_sig, "trend"
 
     if snap.regime == "RANGING":
         return (

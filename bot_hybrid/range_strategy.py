@@ -21,6 +21,9 @@ from bot_live.config import (
     RANGE_LOOKBACK_HOURS,
     HYBRID_RANGE_LOOKBACK_HOURS,
     HYBRID_MIN_SPREAD_PCT,
+    ALPACA_CRYPTO_MIN_ORDER_REF_USD,
+    ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
+    ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT,
     RANGE_STOP_ATR_MULT,
     RISK_PER_TRADE_PCT,
     ADX_PERIOD,
@@ -28,6 +31,20 @@ from bot_live.config import (
 from bot_hybrid.indicators import atr as atr_indicator
 from bot_hybrid.risk_manager import position_size, range_stop_profile
 from bot_hybrid.strategy_base import StrategyContext, StrategySignal
+
+
+def _hybrid_mr_min_spread_pct(ctx: StrategyContext) -> float:
+    """Hybrid MR: gebruik HYBRID_MIN_SPREAD maar minstens Alpaca fee-floor (≈ round-trip/ref).
+
+    De daily-range-bot gebruikt ook `required_min_spread_fraction_crypto_usd` die
+    `MIN_SPREAD_PCT` 2%% forceert — te strak voor 48-uur gemiddelden hourly.
+    """
+    ref = max(float(ctx.capital_cap or 0.0), float(ALPACA_CRYPTO_MIN_ORDER_REF_USD))
+    fee_frac = (
+        float(ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD) / ref
+        + float(ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT)
+    )
+    return max(float(HYBRID_MIN_SPREAD_PCT), fee_frac)
 
 
 def compute_hourly_levels(
@@ -65,7 +82,7 @@ def generate_signal(
     hybrid_range=True: gebruik HYBRID_* venster/spread (alleen hybrid_trader).
     """
     lb = HYBRID_RANGE_LOOKBACK_HOURS if hybrid_range else RANGE_LOOKBACK_HOURS
-    msp = HYBRID_MIN_SPREAD_PCT if hybrid_range else MIN_SPREAD_PCT
+    msp = _hybrid_mr_min_spread_pct(ctx) if hybrid_range else MIN_SPREAD_PCT
     levels = compute_hourly_levels(df, lookback=lb, min_spread_pct=msp)
     if levels is None:
         return StrategySignal(

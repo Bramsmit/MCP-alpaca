@@ -106,12 +106,14 @@ REGIME_CONFIRMATION_BARS = 2    # aantal candles bevestiging (hysteresis)
 
 # Alleen `hybrid_trader` (v3 / trade_v2): losser dan ADX 20/25 zodat crypto-uurdata
 # vaker als "chop/range" telt; UNCERTAIN met matige ADX mag nog range-entries proberen.
-HYBRID_ADX_RANGE_THRESHOLD = 25.0
-HYBRID_ADX_TREND_THRESHOLD = 28.0
+# Bij gap/hysteresis blijft vorig regime; smalle drempels (25/28) hielden bots
+# jaren op TRENDING_UP → trend-strategie blokkeerde entries bij chop.
+HYBRID_ADX_RANGE_THRESHOLD = 30.0
+HYBRID_ADX_TREND_THRESHOLD = 35.0
 HYBRID_REGIME_CONFIRMATION_BARS = 1
 HYBRID_RANGE_LOOKBACK_HOURS = 48
-HYBRID_MIN_SPREAD_PCT = 0.015
-HYBRID_UNCERTAINTY_MAX_ADX_FOR_RANGE = 27.5
+HYBRID_MIN_SPREAD_PCT = 0.012
+HYBRID_UNCERTAINTY_MAX_ADX_FOR_RANGE = 34.5
 
 # Trend-strategy
 EMA_FAST = 20
