@@ -40,6 +40,7 @@ from bot_live.bitvavo_config import (
     MIN_SPREAD_PCT,
     ESTIMATED_ROUND_TRIP_FEE_PCT,
     FEE_MAKER_PCT,
+    FEE_FIXED_PER_SIDE_EUR,
     ROUND_TRIP_FIXED_FEE_EUR,
     MIN_ORDER_REF_EUR,
     MIN_LIMIT_SELL_PRICE_MULT,
@@ -469,6 +470,10 @@ def _check_and_notify_filled_trades(
                     profit,
                     portfolio_value,
                     entry_price=entry_price_for_log,
+                    fee_buy_rate=FEE_MAKER_PCT,
+                    fee_sell_rate=FEE_MAKER_PCT,
+                    fixed_fee_per_fill=FEE_FIXED_PER_SIDE_EUR,
+                    currency_label="EUR",
                     fee_eur=fee_eur,
                     fee_estimated=fee_estimated,
                 )
@@ -483,6 +488,7 @@ def _check_and_notify_filled_trades(
                     portfolio_value=portfolio_value,
                     fee_eur=fee_eur,
                     journal_filename=_BITVAVO_JOURNAL_FILE,
+                    journal_fixed_fee_per_fill=FEE_FIXED_PER_SIDE_EUR,
                 )
                 new_notified.append(tid)
                 new_count += 1

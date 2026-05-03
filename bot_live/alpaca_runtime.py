@@ -26,9 +26,10 @@ from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoLatestQuoteRequest
 
 from bot_live.config import (
+    ALPACA_FILLED_ORDERS_LOOKBACK_HOURS,
     BITVAVO_FEE_BUY_RATE,
     BITVAVO_FEE_SELL_LIMIT_RATE,
-    ALPACA_FILLED_ORDERS_LOOKBACK_HOURS,
+    JOURNAL_FIXED_FEE_PER_FILL_USD,
 )
 from bot_live.telegram import notify_trade_filled
 from bot_live.journal import log_trade
@@ -283,8 +284,14 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
                 entry = entries[sym].get("entry", 0)
                 entry_price_for_log = entry if entry else None
                 if entry:
-                    cost_incl = entry * qty * (1 + BITVAVO_FEE_BUY_RATE)
-                    proceeds = price * qty * (1 - BITVAVO_FEE_SELL_LIMIT_RATE)
+                    cost_incl = (
+                        entry * qty * (1 + BITVAVO_FEE_BUY_RATE)
+                        + JOURNAL_FIXED_FEE_PER_FILL_USD
+                    )
+                    proceeds = (
+                        price * qty * (1 - BITVAVO_FEE_SELL_LIMIT_RATE)
+                        - JOURNAL_FIXED_FEE_PER_FILL_USD
+                    )
                     profit = proceeds - cost_incl
                 del entries[sym]
             notify_trade_filled(

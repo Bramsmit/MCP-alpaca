@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bot_live.config import BITVAVO_FEE_BUY_RATE
+from bot_live.config import BITVAVO_FEE_BUY_RATE, JOURNAL_FIXED_FEE_PER_FILL_USD
 
 log = logging.getLogger(__name__)
 
@@ -33,11 +33,21 @@ def log_trade(
     portfolio_value: float,
     fee_eur: float | None = None,
     journal_filename: str = "trades.jsonl",
+    journal_fixed_fee_per_fill: float | None = None,
 ) -> None:
-    """Schrijf één gevulde trade append naar journal_filename (onder repo-root)."""
+    """Schrijf één gevulde trade append naar journal_filename (onder repo-root).
+
+    journal_fixed_fee_per_fill: None = JOURNAL_FIXED_FEE_PER_FILL_USD (Alpaca);
+    Bitvavo zet typisch FEE_FIXED_PER_SIDE_EUR.
+    """
     profit_pct = None
     if profit is not None and entry_price and entry_price > 0 and qty > 0:
-        cost = entry_price * qty * (1 + BITVAVO_FEE_BUY_RATE)
+        fixed = (
+            JOURNAL_FIXED_FEE_PER_FILL_USD
+            if journal_fixed_fee_per_fill is None
+            else journal_fixed_fee_per_fill
+        )
+        cost = entry_price * qty * (1 + BITVAVO_FEE_BUY_RATE) + fixed
         profit_pct = round(profit / cost * 100, 2)
 
     record = {
