@@ -85,7 +85,7 @@ STOP_LOSS_PER_UNIT = 0.01
 # Na cancel: wacht even voordat nieuwe order geplaatst wordt
 ORDER_REPLACE_DELAY_SEC = 3
 
-# Dynamische order updates
-ORDER_UPDATE_THRESHOLD = 0.015  # 1.5%
+# Dynamische order updates (zelfde drempel als bot_live/config Alpaca range-bot)
+ORDER_UPDATE_THRESHOLD = 0.01  # 1%
 ORDER_MAX_AGE_HOURS = 24
 ORDER_STALE_PRICE_THRESHOLD = 0.05
