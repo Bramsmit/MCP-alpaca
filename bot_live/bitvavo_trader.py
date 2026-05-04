@@ -52,6 +52,7 @@ from bot_live.bitvavo_config import (
     ORDER_REPLACE_DELAY_SEC,
     FILLS_LOOKBACK_HOURS,
 )
+from bot_live.config import TELEGRAM_NOTIFY_BUY_FILLS
 from bot_live.telegram import send_telegram, notify_trade_filled
 from bot_live.journal import log_trade
 from bot_live.run_audit import BITVAVO_RUNS_JSONL, log_run_audit
@@ -462,6 +463,9 @@ def _check_and_notify_filled_trades(
                 fee_eur = raw_fee if raw_fee is not None else qty * price * FEE_MAKER_PCT
                 portfolio_value = get_portfolio_value(exchange)
 
+                send_tg = (side == "buy" and TELEGRAM_NOTIFY_BUY_FILLS) or (
+                    side == "sell" and entry_price_for_log and entry_price_for_log > 0
+                )
                 notify_trade_filled(
                     side,
                     symbol,
@@ -476,6 +480,7 @@ def _check_and_notify_filled_trades(
                     currency_label="EUR",
                     fee_eur=fee_eur,
                     fee_estimated=fee_estimated,
+                    send_telegram_message=send_tg,
                 )
                 log_trade(
                     order_id=tid,

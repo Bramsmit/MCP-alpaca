@@ -8,7 +8,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bot_live.alpaca_runtime import get_trading_clients, get_portfolio_value
+from bot_live.alpaca_runtime import (
+    get_trading_clients,
+    get_portfolio_value,
+    get_cumulative_fictive_fees_usd,
+)
 from bot_live.telegram import send_telegram
 
 _DAY_STATE_PATH = Path(__file__).resolve().parent.parent / ".alpaca_day_state.json"
@@ -55,6 +59,12 @@ def send_daily_report(trading_client=None) -> None:
         )
     else:
         msg = f"📊 Dagrapport {date_str}\nPortfolio: ${value:.2f}"
+
+    cum_fees = get_cumulative_fictive_fees_usd()
+    msg += (
+        f"\n\n💸 Fictieve transactiekosten (cumulatief, model Bitvavo-stijl): "
+        f"${cum_fees:.2f}"
+    )
 
     send_telegram(msg)
     save_day_start(value)

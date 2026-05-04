@@ -66,6 +66,10 @@ import os as _os_journal_fees
 _jf_default = str(ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD)
 _jffe = _os_journal_fees.environ.get("JOURNAL_FIXED_FEE_PER_FILL_USD", _jf_default).strip()
 JOURNAL_FIXED_FEE_PER_FILL_USD = float(_jffe) if _jffe else 0.0
+# Telegram: geen bericht per koop-fill; alleen afgeronde verkoop met PnL (standaard).
+TELEGRAM_NOTIFY_BUY_FILLS = _os_journal_fees.environ.get(
+    "TELEGRAM_NOTIFY_BUY_FILLS", "false"
+).strip().lower() in ("1", "true", "yes", "on")
 
 # Stop-loss: vast bedrag per eenheid onder koopniveau
 # Backtest beste: $0.01/eenheid

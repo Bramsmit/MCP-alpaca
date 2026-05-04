@@ -486,7 +486,12 @@ def run_once():
                         send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
     # Bewaar entry prices voor volgende run (profit berekening bij sell)
-    entries = {sym: {"qty": qty, "entry": entry} for sym, (qty, entry) in positions.items() if entry > 0}
+    positions_journal = get_positions(trading_client, symbols=SYMBOL_POOL)
+    entries = {
+        sym: {"qty": qty, "entry": entry}
+        for sym, (qty, entry) in positions_journal.items()
+        if entry > 0
+    }
     _save_state(entries=entries)
 
     # Run summary (incl. trade-status en actieve symbolen)

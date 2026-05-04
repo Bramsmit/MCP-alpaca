@@ -30,6 +30,8 @@ from bot_live.config import (
     BITVAVO_FEE_BUY_RATE,
     BITVAVO_FEE_SELL_LIMIT_RATE,
     JOURNAL_FIXED_FEE_PER_FILL_USD,
+    SYMBOL_POOL,
+    TELEGRAM_NOTIFY_BUY_FILLS,
 )
 from bot_live.telegram import notify_trade_filled
 from bot_live.journal import log_trade
@@ -220,29 +222,71 @@ def _state_path() -> Path:
     return _REPO_ROOT / ".alpaca_trade_state.json"
 
 
+def get_cumulative_fictive_fees_usd() -> float:
+    """Som geschatte fictieve fees (Alpaca journal-model), uit .alpaca_trade_state.json."""
+    return float(_load_state().get("cumulative_fictive_fees_usd", 0) or 0)
+
+
+def _parse_order_ts(val) -> datetime:
+    if val is None:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if isinstance(val, datetime):
+        dt = val
+    else:
+        try:
+            dt = datetime.fromisoformat(str(val).replace("Z", "+00:00"))
+        except ValueError:
+            return datetime.min.replace(tzinfo=timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _order_fill_sort_ts(o) -> datetime:
+    for attr in ("filled_at", "updated_at", "submitted_at", "created_at"):
+        ts = getattr(o, attr, None)
+        if ts:
+            return _parse_order_ts(ts)
+    return datetime.min.replace(tzinfo=timezone.utc)
+
+
 def _load_state() -> dict:
     """Laad state uit file."""
     path = _state_path()
+    base = {
+        "entries": {},
+        "notified_order_ids": [],
+        "cumulative_fictive_fees_usd": 0.0,
+    }
     if not path.exists():
-        return {"entries": {}, "notified_order_ids": []}
+        return base.copy()
     try:
         data = json.loads(path.read_text())
-        return {
-            "entries": data.get("entries", {}),
-            "notified_order_ids": data.get("notified_order_ids", []),
-        }
+        out = base.copy()
+        out["entries"] = data.get("entries", {})
+        out["notified_order_ids"] = data.get("notified_order_ids", [])
+        out["cumulative_fictive_fees_usd"] = float(
+            data.get("cumulative_fictive_fees_usd", 0) or 0
+        )
+        return out
     except Exception:
-        return {"entries": {}, "notified_order_ids": []}
+        return base.copy()
 
 
-def _save_state(entries: dict | None = None, notified_ids: list[str] | None = None) -> None:
-    """Bewaar state. entries/notified_ids = None betekent: niet overschrijven."""
+def _save_state(
+    entries: dict | None = None,
+    notified_ids: list[str] | None = None,
+    cumulative_fictive_fees_usd: float | None = None,
+) -> None:
+    """Bewaar state. None = veld niet wijzigen."""
     path = _state_path()
     state = _load_state()
     if entries is not None:
         state["entries"] = entries
     if notified_ids is not None:
         state["notified_order_ids"] = notified_ids[-200:]
+    if cumulative_fictive_fees_usd is not None:
+        state["cumulative_fictive_fees_usd"] = float(cumulative_fictive_fees_usd)
     try:
         path.write_text(json.dumps(state, indent=2))
     except Exception as e:
@@ -258,13 +302,19 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
         ).isoformat()
         req = GetOrdersRequest(status=QueryOrderStatus.CLOSED, after=after)
         orders = trading_client.get_orders(req)
+        orders = sorted(orders or [], key=_order_fill_sort_ts)
         portfolio_value = get_portfolio_value(trading_client)
         state = _load_state()
         entries = dict(state["entries"])
+        # Open posities in pool: verse avg entry (ook als sym even uit top-N is)
+        for sym, (qty, ep) in get_positions(trading_client, SYMBOL_POOL).items():
+            if qty > 0 and ep > 0:
+                entries[sym] = {"qty": float(qty), "entry": float(ep)}
         notified_ids = list(state.get("notified_order_ids", []))
+        cum_fees = float(state.get("cumulative_fictive_fees_usd", 0) or 0)
         new_notified = []
 
-        for o in orders or []:
+        for o in orders:
             if getattr(o, "status", None) != OrderStatus.FILLED:
                 continue
             oid = str(getattr(o, "id", ""))
@@ -278,6 +328,11 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
             if not qty or not price:
                 continue
             side = "buy" if o.side == OrderSide.BUY else "sell"
+            if side == "buy":
+                cum_fees += qty * price * BITVAVO_FEE_BUY_RATE + JOURNAL_FIXED_FEE_PER_FILL_USD
+            else:
+                cum_fees += qty * price * BITVAVO_FEE_SELL_LIMIT_RATE + JOURNAL_FIXED_FEE_PER_FILL_USD
+
             profit = None
             entry_price_for_log = None
             if side == "sell" and sym in entries:
@@ -294,8 +349,19 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
                     )
                     profit = proceeds - cost_incl
                 del entries[sym]
+
+            send_tg = (side == "buy" and TELEGRAM_NOTIFY_BUY_FILLS) or (
+                side == "sell" and entry_price_for_log and entry_price_for_log > 0
+            )
             notify_trade_filled(
-                side, sym, qty, price, profit, portfolio_value, entry_price=entry_price_for_log
+                side,
+                sym,
+                qty,
+                price,
+                profit,
+                portfolio_value,
+                entry_price=entry_price_for_log,
+                send_telegram_message=send_tg,
             )
             log_trade(
                 order_id=oid,
@@ -310,7 +376,10 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
             new_notified.append(oid)
 
         if new_notified:
-            _save_state(notified_ids=notified_ids + new_notified)
+            _save_state(
+                notified_ids=notified_ids + new_notified,
+                cumulative_fictive_fees_usd=cum_fees,
+            )
         return len(new_notified)
     except Exception as e:
         log.warning("check filled orders: %s", e)
