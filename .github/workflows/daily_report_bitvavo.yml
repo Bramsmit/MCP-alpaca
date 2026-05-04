@@ -20,6 +20,7 @@ jobs:
           path: |
             .bitvavo_trade_state.json
             bitvavo_trades.jsonl
+            bitvavo_runs.jsonl
             .bitvavo_day_state.json
           key: bitvavo-state-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |

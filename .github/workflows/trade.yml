@@ -15,6 +15,7 @@ jobs:
             .alpaca_trade_state.json
             trades.jsonl
             alpaca_runs.jsonl
+            .alpaca_day_state.json
           key: alpaca-trade-state-${{ runner.os }}
 
       - uses: actions/setup-python@v5

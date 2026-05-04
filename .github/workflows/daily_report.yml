@@ -9,13 +9,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Zelfde key als trade.yml zodat day_state + journals niet “mis” gaan tussen jobs.
       - name: Herstel trade state (cumulatieve fee-tracking)
         uses: actions/cache@v4
         with:
-          path: .alpaca_trade_state.json
-          key: alpaca-daily-report-state-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: |
-            alpaca-trade-state-${{ runner.os }}-
+          path: |
+            .alpaca_trade_state.json
+            trades.jsonl
+            alpaca_runs.jsonl
+            .alpaca_day_state.json
+          key: alpaca-trade-state-${{ runner.os }}
 
       - uses: actions/setup-python@v5
         with:
