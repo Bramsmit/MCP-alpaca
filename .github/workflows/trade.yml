@@ -3,11 +3,17 @@ on:
   schedule:
     - cron: '0 * * * *'   # Elk uur op het hele uur
   workflow_dispatch:      # Handmatig starten via GitHub UI
+
+permissions:
+  contents: write         # Nodig voor git push van trade-log naar repo
+
 jobs:
   trade:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Volledige history voor git push
 
       - uses: actions/cache@v4
         with:
@@ -36,7 +42,26 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m bot_range_1000.live_trader
 
-      - name: Upload journals
+      - name: Export en bewaar trade-log in repo
+        if: always()
+        run: |
+          python -m bot_live.export_trade_log
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Pull laatste wijzigingen (andere runs kunnen net iets gepusht hebben)
+          git pull --rebase origin main 2>/dev/null || true
+
+          git add data/alpaca_trades.jsonl data/alpaca_trades.csv
+
+          # Commit alleen als er iets nieuws is
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: trade log $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+            git push origin main
+          fi
+
+      - name: Upload journals (backup artifact)
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -45,8 +70,10 @@ jobs:
             trades.jsonl
             alpaca_runs.jsonl
             .alpaca_trade_state.json
+            data/alpaca_trades.jsonl
+            data/alpaca_trades.csv
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 90
 
       - name: Notify on failure
         if: failure()

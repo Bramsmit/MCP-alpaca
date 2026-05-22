@@ -358,10 +358,27 @@ def _save_state(
 
 
 def _known_notified_order_ids() -> set[str]:
-    """State + trades.jsonl — voorkomt dubbele Telegram bij cache-miss of lokale + CI-run."""
+    """State + trades.jsonl + data/alpaca_trades.jsonl (persistente repo-log).
+
+    Drie lagen zodat dedup ook werkt na cache-miss of bij eerste run na herinstallatie.
+    """
     state = _load_state()
     ids = {str(x) for x in state.get("notified_order_ids", []) if x}
     ids.update(known_order_ids("trades.jsonl"))
+    # Persistente log in repo (bijgewerkt door export_trade_log stap in CI)
+    persistent = _REPO_ROOT / "data" / "alpaca_trades.jsonl"
+    if persistent.exists():
+        try:
+            with persistent.open(encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        rec = __import__("json").loads(line)
+                        oid = str(rec.get("order_id") or "")
+                        if oid:
+                            ids.add(oid)
+        except Exception:
+            pass
     return ids
 
 
