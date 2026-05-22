@@ -80,6 +80,15 @@ def log_trade(
         log.warning("Kon trade niet loggen naar journal: %s", e)
 
 
+def known_order_ids(journal_filename: str = "trades.jsonl") -> frozenset[str]:
+    """Order-IDs die al in het journal staan (Telegram/journal dedupe)."""
+    return frozenset(
+        str(t["order_id"])
+        for t in load_trades(journal_filename)
+        if t.get("order_id")
+    )
+
+
 def load_trades(journal_filename: str = "trades.jsonl") -> list[dict]:
     """Laad alle trades uit het gegeven journal-bestand (repo-root).
 

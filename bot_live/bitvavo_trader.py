@@ -54,7 +54,7 @@ from bot_live.bitvavo_config import (
 )
 from bot_live.config import TELEGRAM_NOTIFY_BUY_FILLS
 from bot_live.telegram import send_telegram, notify_trade_filled
-from bot_live.journal import log_trade
+from bot_live.journal import known_order_ids, log_trade
 from bot_live.run_audit import BITVAVO_RUNS_JSONL, log_run_audit
 
 # Aparte state/journal bestanden voor Bitvavo (los van Alpaca)
@@ -395,7 +395,7 @@ def _save_state(
     if entries is not None:
         state["entries"] = entries
     if notified_ids is not None:
-        state["notified_trade_ids"] = notified_ids[-200:]
+        state["notified_trade_ids"] = notified_ids[-1000:]
     if bot_orders is not None:
         state["bot_orders"] = bot_orders
     try:
@@ -417,7 +417,10 @@ def _check_and_notify_filled_trades(
             * 1000
         )
         state = _load_state()
-        notified_ids = list(state.get("notified_trade_ids", []))
+        known_notified = {
+            str(x) for x in state.get("notified_trade_ids", []) if x
+        }
+        known_notified.update(known_order_ids(_BITVAVO_JOURNAL_FILE))
         entries = dict(state_entries)
         new_notified = []
         new_count = 0
@@ -431,7 +434,7 @@ def _check_and_notify_filled_trades(
 
             for t in trades:
                 tid = str(t.get("id", ""))
-                if not tid or tid in notified_ids:
+                if not tid or tid in known_notified:
                     continue
                 side = t.get("side", "")
                 qty = float(t.get("amount") or 0)
@@ -466,6 +469,20 @@ def _check_and_notify_filled_trades(
                 send_tg = (side == "buy" and TELEGRAM_NOTIFY_BUY_FILLS) or (
                     side == "sell" and entry_price_for_log and entry_price_for_log > 0
                 )
+                known_notified.add(tid)
+                log_trade(
+                    order_id=tid,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    price=price,
+                    entry_price=entry_price_for_log,
+                    profit=profit,
+                    portfolio_value=portfolio_value,
+                    fee_eur=fee_eur,
+                    journal_filename=_BITVAVO_JOURNAL_FILE,
+                    journal_fixed_fee_per_fill=FEE_FIXED_PER_SIDE_EUR,
+                )
                 notify_trade_filled(
                     side,
                     symbol,
@@ -482,24 +499,11 @@ def _check_and_notify_filled_trades(
                     fee_estimated=fee_estimated,
                     send_telegram_message=send_tg,
                 )
-                log_trade(
-                    order_id=tid,
-                    symbol=symbol,
-                    side=side,
-                    qty=qty,
-                    price=price,
-                    entry_price=entry_price_for_log,
-                    profit=profit,
-                    portfolio_value=portfolio_value,
-                    fee_eur=fee_eur,
-                    journal_filename=_BITVAVO_JOURNAL_FILE,
-                    journal_fixed_fee_per_fill=FEE_FIXED_PER_SIDE_EUR,
-                )
                 new_notified.append(tid)
                 new_count += 1
 
         if new_notified:
-            _save_state(notified_ids=notified_ids + new_notified)
+            _save_state(notified_ids=sorted(known_notified)[-1000:])
 
         return new_count, entries
 

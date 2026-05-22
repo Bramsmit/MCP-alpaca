@@ -16,7 +16,9 @@ jobs:
             trades.jsonl
             alpaca_runs.jsonl
             .alpaca_day_state.json
-          key: alpaca-trade-state-${{ runner.os }}
+          key: alpaca-trade-${{ runner.os }}-${{ hashFiles('trades.jsonl', '.alpaca_trade_state.json') }}
+          restore-keys: |
+            alpaca-trade-${{ runner.os }}-
 
       - uses: actions/setup-python@v5
         with:

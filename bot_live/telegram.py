@@ -108,6 +108,9 @@ def notify_trade_filled(
         send_tg = TELEGRAM_NOTIFY_BUY_FILLS or side_l != "buy"
     else:
         send_tg = send_telegram_message
+    # Verkoop zonder bekende entry: geen losse 🔴-melding (alleen afgeronde ronde-trip).
+    if side_l == "sell" and send_tg and not (entry_price and entry_price > 0):
+        send_tg = False
     if not send_tg:
         return True
 

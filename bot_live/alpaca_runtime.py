@@ -3,11 +3,11 @@ Gedeelde Alpaca crypto-runtime: clients, quotes, posities, open orders,
 limit-sell submit, trade-state, fill-notificaties (Telegram + journal).
 
 Gebruikt door:
-  - bot_range_1000.live_trader (daily range-bot)
+  - alpaca_bot.live_trader (daily range-bot; shim: bot_range_1000.live_trader)
   - bot_hybrid.hybrid_trader (regime / hourly)
 
-Let op: wijzigingen hier raken beide bots. Range-specifieke logica hoort in
-live_trader.py (o.a. select_top_symbols, run_once).
+Let op: wijzigingen hier raken hybrid en Alpaca range. Range-specifieke loop hoort in
+alpaca_bot/live_trader.py (o.a. select_top_symbols, run_once).
 """
 
 from __future__ import annotations
@@ -34,11 +34,75 @@ from bot_live.config import (
     TELEGRAM_NOTIFY_BUY_FILLS,
 )
 from bot_live.telegram import notify_trade_filled
-from bot_live.journal import log_trade
+from bot_live.journal import known_order_ids, log_trade
 
 log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _alpaca_bot_trade_log_path() -> Path | None:
+    """
+    Append-only JSON-lines audit van gevulde Alpaca-orders (USD-quote).
+
+    ALPACA_BOT_TRADE_LOG:
+      - niet gezet → repo-root alpaca_bot_trades.jsonl
+      - leeg / false / 0 / off → uit
+      - anders → pad (relatief t.o.v. repo-root als niet absoluut)
+    """
+    raw = os.environ.get("ALPACA_BOT_TRADE_LOG")
+    if raw is None:
+        return _REPO_ROOT / "alpaca_bot_trades.jsonl"
+    s = raw.strip()
+    if s.lower() in ("", "0", "false", "no", "off"):
+        return None
+    p = Path(s).expanduser()
+    return p if p.is_absolute() else _REPO_ROOT / p
+
+
+def _order_audit_snapshot(o) -> dict:
+    """Compacte Alpaca-order velden voor lokaal nakijken (geen secrets)."""
+    keys = (
+        "id",
+        "client_order_id",
+        "symbol",
+        "side",
+        "type",
+        "status",
+        "qty",
+        "filled_qty",
+        "filled_avg_price",
+        "limit_price",
+        "created_at",
+        "updated_at",
+        "filled_at",
+        "submitted_at",
+        "time_in_force",
+    )
+    try:
+        data = o.model_dump(mode="json")
+        return {k: data.get(k) for k in keys if k in data or hasattr(o, k)}
+    except Exception:
+        out = {}
+        for k in keys:
+            if hasattr(o, k):
+                v = getattr(o, k)
+                out[k] = v.isoformat() if hasattr(v, "isoformat") else v
+        return out
+
+
+def append_alpaca_bot_fill_audit(record: dict) -> None:
+    """Schrijf één JSON-object als regel naar het Alpaca-bot auditbestand."""
+    path = _alpaca_bot_trade_log_path()
+    if path is None:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, default=str) + "\n")
+            f.flush()
+    except Exception as e:
+        log.warning("alpaca_bot_trade_log: %s", e)
 
 
 def get_trading_clients():
@@ -284,13 +348,33 @@ def _save_state(
     if entries is not None:
         state["entries"] = entries
     if notified_ids is not None:
-        state["notified_order_ids"] = notified_ids[-200:]
+        state["notified_order_ids"] = notified_ids[-1000:]
     if cumulative_fictive_fees_usd is not None:
         state["cumulative_fictive_fees_usd"] = float(cumulative_fictive_fees_usd)
     try:
         path.write_text(json.dumps(state, indent=2))
     except Exception as e:
         log.warning("Kon state niet opslaan: %s", e)
+
+
+def _known_notified_order_ids() -> set[str]:
+    """State + trades.jsonl — voorkomt dubbele Telegram bij cache-miss of lokale + CI-run."""
+    state = _load_state()
+    ids = {str(x) for x in state.get("notified_order_ids", []) if x}
+    ids.update(known_order_ids("trades.jsonl"))
+    return ids
+
+
+def _apply_buy_to_entries(entries: dict, sym: str, qty: float, price: float) -> None:
+    prev = entries.get(sym)
+    if prev and float(prev.get("qty") or 0) > 0:
+        pq = float(prev["qty"])
+        pe = float(prev.get("entry") or 0)
+        new_qty = pq + qty
+        new_entry = (pe * pq + price * qty) / new_qty if new_qty > 0 else price
+        entries[sym] = {"qty": new_qty, "entry": new_entry}
+    else:
+        entries[sym] = {"qty": qty, "entry": price}
 
 
 def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
@@ -310,15 +394,16 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
         for sym, (qty, ep) in get_positions(trading_client, SYMBOL_POOL).items():
             if qty > 0 and ep > 0:
                 entries[sym] = {"qty": float(qty), "entry": float(ep)}
-        notified_ids = list(state.get("notified_order_ids", []))
+        known_notified = _known_notified_order_ids()
         cum_fees = float(state.get("cumulative_fictive_fees_usd", 0) or 0)
-        new_notified = []
+        new_notified: list[str] = []
+        entries_dirty = False
 
         for o in orders:
             if getattr(o, "status", None) != OrderStatus.FILLED:
                 continue
             oid = str(getattr(o, "id", ""))
-            if oid in notified_ids:
+            if not oid or oid in known_notified:
                 continue
             sym = _norm_symbol(o.symbol)
             if sym not in symbols:
@@ -335,7 +420,10 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
 
             profit = None
             entry_price_for_log = None
-            if side == "sell" and sym in entries:
+            if side == "buy":
+                _apply_buy_to_entries(entries, sym, qty, price)
+                entries_dirty = True
+            elif sym in entries:
                 entry = entries[sym].get("entry", 0)
                 entry_price_for_log = entry if entry else None
                 if entry:
@@ -348,20 +436,52 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
                         - JOURNAL_FIXED_FEE_PER_FILL_USD
                     )
                     profit = proceeds - cost_incl
-                del entries[sym]
+                prev_qty = float(entries[sym].get("qty") or 0)
+                remain_q = prev_qty - qty
+                if remain_q <= 1e-12:
+                    del entries[sym]
+                else:
+                    entries[sym] = {
+                        "qty": remain_q,
+                        "entry": entries[sym].get("entry"),
+                    }
+                entries_dirty = True
 
             send_tg = (side == "buy" and TELEGRAM_NOTIFY_BUY_FILLS) or (
                 side == "sell" and entry_price_for_log and entry_price_for_log > 0
             )
-            notify_trade_filled(
-                side,
-                sym,
-                qty,
-                price,
-                profit,
-                portfolio_value,
-                entry_price=entry_price_for_log,
-                send_telegram_message=send_tg,
+            known_notified.add(oid)
+            new_notified.append(oid)
+            filled_ts_iso = None
+            for attr in ("filled_at", "updated_at", "submitted_at"):
+                ts = getattr(o, attr, None)
+                if ts:
+                    filled_ts_iso = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+                    break
+            base_asset = sym.split("/")[0] if "/" in sym else sym
+            append_alpaca_bot_fill_audit(
+                {
+                    "logged_at": datetime.now(timezone.utc).isoformat(),
+                    "alpaca_fill_timestamp": filled_ts_iso,
+                    "order_id": oid,
+                    "symbol": sym,
+                    "base_asset": base_asset,
+                    "quote_currency": "USD",
+                    "side": side,
+                    "filled_qty": qty,
+                    "filled_avg_price_usd": price,
+                    "notional_usd": round(qty * price, 10),
+                    "portfolio_value_usd": round(portfolio_value, 2),
+                    "entry_price_usd_for_pnl": entry_price_for_log,
+                    "estimated_roundtrip_profit_usd": round(profit, 8)
+                    if profit is not None
+                    else None,
+                    "note_eur_comparison": (
+                        "Alpaca crypto is USD-geciteerd; PnL in journal gebruikt fictieve "
+                        "Bitvavo maker-fees ter vergelijking met EUR-spot."
+                    ),
+                    "order_snapshot": _order_audit_snapshot(o),
+                }
             )
             log_trade(
                 order_id=oid,
@@ -373,12 +493,22 @@ def _check_and_notify_filled_orders(trading_client, symbols: list[str]) -> int:
                 profit=profit,
                 portfolio_value=portfolio_value,
             )
-            new_notified.append(oid)
+            notify_trade_filled(
+                side,
+                sym,
+                qty,
+                price,
+                profit,
+                portfolio_value,
+                entry_price=entry_price_for_log,
+                send_telegram_message=send_tg,
+            )
 
-        if new_notified:
+        if new_notified or entries_dirty:
             _save_state(
-                notified_ids=notified_ids + new_notified,
-                cumulative_fictive_fees_usd=cum_fees,
+                entries=entries if entries_dirty else None,
+                notified_ids=sorted(known_notified)[-1000:],
+                cumulative_fictive_fees_usd=cum_fees if new_notified else None,
             )
         return len(new_notified)
     except Exception as e:
