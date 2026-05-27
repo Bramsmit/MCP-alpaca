@@ -14,15 +14,6 @@ jobs:
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d "text=✅ Alpaca range-bot: actief."
 
-  heartbeat-kraken:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Kraken bot heartbeat
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN_KRAKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID_KRAKEN }}" \
-            -d "text=✅ Kraken range-bot: actief."
-
   heartbeat-bitvavo:
     runs-on: ubuntu-latest
     steps:
