@@ -46,17 +46,34 @@ jobs:
 
       - name: Export en bewaar trade-log in repo
         if: always()
+        continue-on-error: true   # push-fout mag bot-run niet laten falen
         run: |
           python -m bot_live.export_trade_log
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Rebase + commit
           git pull --rebase origin main 2>/dev/null || true
           git add data/alpaca_trades.jsonl data/alpaca_trades.csv
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: trade log $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
-            git push origin main
+          if git diff --cached --quiet; then
+            echo "Geen nieuwe trades, skip push."
+            exit 0
           fi
+          git commit -m "chore: trade log $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+
+          # Retry tot 3 keer bij push-conflict (concurrent runs)
+          for attempt in 1 2 3; do
+            if git push origin main; then
+              echo "Push geslaagd (poging $attempt)."
+              exit 0
+            fi
+            echo "Push poging $attempt mislukt, rebase en opnieuw..."
+            git pull --rebase origin main 2>/dev/null || true
+            sleep $((attempt * 5))
+          done
+          echo "⚠️  Push na 3 pogingen mislukt; data bewaard in cache."
+          exit 1
 
       - name: Notify on failure
         if: failure()
