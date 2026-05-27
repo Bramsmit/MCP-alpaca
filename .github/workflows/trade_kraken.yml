@@ -1,0 +1,47 @@
+name: Trading Bot — Kraken range (USD)
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .kraken_trade_state.json
+            kraken_trades.jsonl
+            kraken_runs.jsonl
+            kraken_bot_trades.jsonl
+          key: kraken-trade-${{ runner.os }}-${{ hashFiles('kraken_trades.jsonl', '.kraken_trade_state.json') }}
+          restore-keys: |
+            kraken-trade-${{ runner.os }}-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'bot_live/requirements.txt'
+
+      - name: Install dependencies
+        run: pip install -r bot_live/requirements.txt
+
+      - name: Run Kraken range bot
+        env:
+          KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
+          KRAKEN_SECRET_KEY: ${{ secrets.KRAKEN_SECRET_KEY }}
+          KRAKEN_DRY_RUN: ${{ vars.KRAKEN_DRY_RUN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_KRAKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID_KRAKEN }}
+        run: python -m kraken.live_trader
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN_KRAKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID_KRAKEN }}" \
+            -d "text=❌ Kraken range-bot gefaald. Check GitHub Actions."

@@ -3,13 +3,34 @@ dist
 .DS_Store
 .env
 .cursor/mcp.json
+
+# Runtime state (wordt niet opgeslagen in repo)
 .alpaca_trade_state.json
 .alpaca_hybrid_state.json
+.alpaca_day_state.json
+.bitvavo_trade_state.json
+.bitvavo_day_state.json
+.kraken_trade_state.json
+
+# Trade-journals (werkbestanden CI/lokaal; persistente versie → data/)
 trades.jsonl
+alpaca_bot_trades.jsonl
+alpaca_runs.jsonl
 bitvavo_trades.jsonl
+bitvavo_runs.jsonl
+kraken_trades.jsonl
+kraken_runs.jsonl
+kraken_bot_trades.jsonl
+
 __pycache__
 *.pyc
+.pytest_cache
 alpaca-server/
+
+# Persoonlijke/financiële data — niet publiek
+Volledige geschiedenis.csv
+.Rhistory
+ai.symlink.bak
 
 # Handoff exports (trade-historie; python -m bot_range_1000.export_handoff)
 exports/alpaca_range_bot_v1_handoff_*.json
@@ -18,3 +39,10 @@ exports/alpaca_range_bot_v1_handoff_*.md
 # Bitvavo metrics tool output (metrics/bitvavo_compare)
 metrics/output/*
 !metrics/output/.gitkeep
+
+# Generated metrics (handoff + API-vergelijking; zie metrics/README.md)
+metrics/alpaca_range_bot_v1_handoff_*.json
+metrics/alpaca_range_bot_v1_handoff_*.md
+metrics/alpaca_filled_orders_*.csv
+metrics/alpaca_filled_orders_*.json
+metrics/alpaca_filled_orders_*_summary.md

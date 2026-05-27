@@ -11,12 +11,16 @@ python -m bot_range_1000.backtest
 ## Context voor v2 / Cursor (architectuur + trade-handoff)
 
 - Overzicht: [docs/CODEBASE_CONTEXT_FOR_V2.md](../docs/CODEBASE_CONTEXT_FOR_V2.md)
-- Export (JSON + MD, geen API keys): `python -m bot_range_1000.export_handoff` → bestanden in `exports/`
+- Export (JSON + MD, geen API keys): `python -m bot_range_1000.export_handoff` → standaard onder `metrics/`
 
 ## Live Paper Trading
 
+Canonieke implementatie: [`alpaca_bot/live_trader.py`](../alpaca_bot/live_trader.py). Het commando hieronder is een dunne shim:
+
 ```bash
 python -m bot_range_1000.live_trader
+# gelijk aan:
+python -m alpaca_bot.live_trader
 ```
 
 ### Alle orders annuleren

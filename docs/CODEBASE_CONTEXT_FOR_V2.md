@@ -24,7 +24,7 @@ Gebruik dit bestand als **projectcontext** in een nieuwe Cursor-workspace of om 
 |-----|-----|
 | `bot_live/config.py` | Strategie-constanten (range + hybrid), Bitvavo fee-constants, order-drempels. |
 | `bot_live/alpaca_runtime.py` | **Gedeelde Alpaca-runtime:** clients, quotes, posities, sells, fill-notificaties, `.alpaca_trade_state.json`. |
-| `bot_range_1000/live_trader.py` | Range-bot: `run_once()`, symbol selectie, range order-loop; gebruikt `alpaca_runtime`. |
+| `alpaca_bot/live_trader.py` | Range-bot (paper): `run_once()`, symbol selectie; shim `bot_range_1000/live_trader.py`. |
 | `bot_range_1000/backtest.py`, `backtest_all.py` | Historische simulatie range-strategie. |
 | `bot_range_1000/export_handoff.py` | Handoff JSON/MD — zie §7. |
 | `bot_hybrid/hybrid_trader.py` | Hybrid regime-trader (hourly); deelt Alpaca-helpers met range. |
@@ -36,7 +36,7 @@ Gebruik dit bestand als **projectcontext** in een nieuwe Cursor-workspace of om 
 | `bot_live/daily_report.py`, `bitvavo_*.py` | Rapportage / Bitvavo-runner. |
 | `bot_live/status.py` | Status / diagnostiek (Alpaca). |
 | `bot_live/cancel_all_orders.py` | Hulp voor orders (legacy Kraken-tekst in docstring mogelijk). |
-| `.github/workflows/trade.yml` | Elk uur: cache state, `python -m bot_range_1000.live_trader`. |
+| `.github/workflows/trade.yml` | Elk uur: cache state, `python -m alpaca_bot.live_trader` (of shim `bot_range_1000.live_trader`). |
 | `.github/workflows/daily_report.yml`, `daily_status.yml` | Overige automatisering. |
 | `docs/DEPLOY.md`, `docs/GITHUB_SETUP.md` | Deploy / GitHub. |
 | `trades.jsonl` | **Lokaal / CI-cache:** één JSON-object per regel per gedetecteerde fill (gitignored). |
@@ -46,7 +46,7 @@ Gebruik dit bestand als **projectcontext** in een nieuwe Cursor-workspace of om 
 
 ## 3. Entry points
 
-- **Range (zoals CI):** `python -m bot_range_1000.live_trader`
+- **Range (zoals CI):** `python -m alpaca_bot.live_trader` of `python -m bot_range_1000.live_trader` (shim)
 - **Hybrid v2:** `python -m bot_hybrid.hybrid_trader`
 - **Continu op server:** `python -m bot_live.run_loop` of `bot_range_1000/run_live.sh`
 - **Handoff genereren:** `python -m bot_range_1000.export_handoff`
@@ -96,13 +96,13 @@ Genereer een **JSON** (machineleesbaar) + **Markdown** (leesbaar) met dezelfde t
 cd /path/to/MCP-alpaca
 python -m bot_range_1000.export_handoff
 # optioneel:
-python -m bot_range_1000.export_handoff --output-dir exports --max-trades-md 80
+python -m bot_range_1000.export_handoff --output-dir metrics --max-trades-md 80
 ```
 
 Uitvoer (voorbeeld):
 
-- `exports/alpaca_range_bot_v1_handoff_2026-04-13_143022Z.json`
-- `exports/alpaca_range_bot_v1_handoff_2026-04-13_143022Z.md`
+- `metrics/alpaca_range_bot_v1_handoff_2026-04-13_143022Z.json`
+- `metrics/alpaca_range_bot_v1_handoff_2026-04-13_143022Z.md`
 
 **Inhoud (concept):**
 
@@ -117,7 +117,7 @@ Het **Markdown**-bestand vat dit samen + tabel met de laatste N trades (configur
 **Tip voor Cursor v2:** voeg in de nieuwe workspace toe:
 
 1. Dit bestand `docs/CODEBASE_CONTEXT_FOR_V2.md`
-2. De laatste `exports/alpaca_range_bot_v1_handoff_*.md` en/of `.json`
+2. De laatste `metrics/alpaca_range_bot_v1_handoff_*.md` en/of `.json`
 
 Zo heeft het model **architectuur + jouw historische trades + instellingen** zonder de hele oude repo te hoeven kennen.
 

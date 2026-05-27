@@ -1,11 +1,11 @@
-name: Trading Bot
+name: Trading Bot — Alpaca range
 on:
   schedule:
-    - cron: '0 * * * *'   # Elk uur op het hele uur
-  workflow_dispatch:      # Handmatig starten via GitHub UI
+    - cron: '0 * * * *'   # Elk uur
+  workflow_dispatch:
 
 permissions:
-  contents: write         # Nodig voor git push van trade-log naar repo
+  contents: write
 
 jobs:
   trade:
@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Volledige history voor git push
+          fetch-depth: 0
 
       - uses: actions/cache@v4
         with:
@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'bot_live/requirements.txt'
 
       - name: Install dependencies
         run: pip install -r bot_live/requirements.txt
@@ -49,35 +51,16 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Pull laatste wijzigingen (andere runs kunnen net iets gepusht hebben)
           git pull --rebase origin main 2>/dev/null || true
-
           git add data/alpaca_trades.jsonl data/alpaca_trades.csv
-
-          # Commit alleen als er iets nieuws is
           if ! git diff --cached --quiet; then
             git commit -m "chore: trade log $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
             git push origin main
           fi
-
-      - name: Upload journals (backup artifact)
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: alpaca-journals-${{ github.run_id }}
-          path: |
-            trades.jsonl
-            alpaca_runs.jsonl
-            .alpaca_trade_state.json
-            data/alpaca_trades.jsonl
-            data/alpaca_trades.csv
-          if-no-files-found: ignore
-          retention-days: 90
 
       - name: Notify on failure
         if: failure()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d "text=❌ Trading bot heeft gefaald. Check GitHub Actions voor details."
+            -d "text=❌ Alpaca range-bot gefaald. Check GitHub Actions."

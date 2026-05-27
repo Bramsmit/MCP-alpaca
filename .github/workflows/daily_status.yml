@@ -1,14 +1,33 @@
-name: Daily Status
+name: Dagelijkse heartbeat (alle bots)
 on:
   schedule:
-    - cron: '0 9 * * *'   # Elke dag om 9:00 UTC (10:00/11:00 NL)
-  workflow_dispatch:       # Handmatig testen
+    - cron: '0 9 * * *'   # 09:00 UTC = 11:00 Amsterdam
+  workflow_dispatch:
+
 jobs:
-  status:
+  heartbeat-alpaca:
     runs-on: ubuntu-latest
     steps:
-      - name: Stuur dagelijkse heartbeat
+      - name: Alpaca range-bot heartbeat
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d "text=✅ Trading bot: nog actief. Laatste dagelijkse check OK."
+            -d "text=✅ Alpaca range-bot: actief."
+
+  heartbeat-kraken:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kraken bot heartbeat
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN_KRAKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID_KRAKEN }}" \
+            -d "text=✅ Kraken range-bot: actief."
+
+  heartbeat-bitvavo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bitvavo bot heartbeat
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BITVAVO_TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}" \
+            -d "text=✅ Bitvavo bot: actief."

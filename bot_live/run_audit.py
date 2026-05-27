@@ -2,7 +2,8 @@
 Append-only JSONL: één record per bot-run (niveaus, prijzen, stats, posities).
 
 - bitvavo_runs.jsonl — Bitvavo range-bot (`bitvavo_trader`)
-- alpaca_runs.jsonl — Alpaca range-bot (`bot_range_1000.live_trader`)
+- alpaca_runs.jsonl — Alpaca range-bot (`alpaca_bot.live_trader`)
+- kraken_runs.jsonl — Kraken USD range-bot (`kraken.live_trader`)
 
 Vul aan naast bestaande fill-journals (bitvavo_trades.jsonl /
 trades.jsonl) voor vergelijking en omdat de exchange-UI soms onhandig
@@ -23,6 +24,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 BITVAVO_RUNS_JSONL = "bitvavo_runs.jsonl"
 ALPACA_RUNS_JSONL = "alpaca_runs.jsonl"
+KRAKEN_RUNS_JSONL = "kraken_runs.jsonl"
 
 
 def _audit_path(filename: str) -> Path:

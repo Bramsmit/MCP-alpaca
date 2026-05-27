@@ -5,19 +5,29 @@ alwaysApply: true
 
 # MCP-alpaca — package-indeling
 
-- **`bot_range_1000/`** — Daily **range**-strategie op Alpaca (`live_trader.py`, backtests, export_handoff). Entry: `python -m bot_range_1000.live_trader`.
+- **`alpaca_bot/`** — **Alpaca paper** range-runner + venue-neutrale **`strategy_core.py`** (wordt ook door Kraken geïmporteerd run-time).
+  - Entry: `python -m alpaca_bot.live_trader`. CI: `.github/workflows/trade.yml`.
+  - Mapnaam niet `alpaca/` om conflict met pip-pakket `alpaca` (Alpaca SDK) te vermijden.
+- **`kraken/`** — **Kraken spot USD live** range-runner + **`kraken_runtime.py`** (ccxt).
+  - Entry: `python -m kraken.live_trader`. CI: `.github/workflows/trade_kraken.yml`.
+- **`bot_range_1000/`** — Range **backtests**, export_handoff; **`live_trader.py`** is compat-shim naar **`alpaca_bot.live_trader`**.
 - **`bot_hybrid/`** — **Hybrid** regime-trader (hourly). Entry: `python -m bot_hybrid.hybrid_trader`.
-- **`bot_live/`** — **Gedeelde infra:** `config.py`, Telegram, journal, Bitvavo-scripts, rapporten, `requirements.txt`, en **`alpaca_runtime.py`**.
+- **`bot_live/`** — **Gedeelde infra:** `config.py`, Telegram, journal, Bitvavo-scripts, rapporten, `requirements.txt`, **`alpaca_runtime.py`** (Alpaca + hybrid).
+- **Metrics-map:** gegenereerde exports/handoffs onder **`metrics/`** (zie `metrics/README.md`). API-export: `python -m bot_live.export_alpaca_orders`; CI: workflow `Alpaca — vergelijkings-export API`. Zie ook [`alpaca_bot/README.md`](alpaca_bot/README.md) en [`kraken/README.md`](kraken/README.md).
 
 ## Alpaca-runtime (belangrijk)
 
 - **`bot_live/alpaca_runtime.py`** bevat o.a. `get_trading_clients`, `get_positions`, `get_open_orders`, limit-sell helpers, `_check_and_notify_filled_orders`, trade-state (`.alpaca_trade_state.json`).
-- Zowel **range** als **hybrid** importeren dit. Wijzigingen in `alpaca_runtime.py` kunnen **beide** bots beïnvloeden.
-- Range-**specifieke** logica (o.a. `select_top_symbols`, `run_once` loop) hoort in **`bot_range_1000/live_trader.py`**, niet dupliceren in hybrid.
+- **Hybrid** importeert dit. Range paper gebruikt dit via **`alpaca_bot/live_trader.py`**.
+- Wijzigingen in `alpaca_runtime.py` kunnen **hybrid** en **Alpaca range** beïnvloeden; niet gebruikt door **Kraken** (`kraken/kraken_runtime.py`).
+
+## Kraken-runtime
+
+- **`kraken/kraken_runtime.py`** — ccxt Kraken USD spot, eigen state `.kraken_trade_state.json`, journal `kraken_trades.jsonl`, run-audit `kraken_runs.jsonl`.
 
 ## Bitvavo
 
-- Bitvavo-bot en EUR-config: **`bot_live/bitvavo_*.py`**, niet onder `bot_range_1000`.
+- Bitvavo-bot en EUR-config: **`bot_live/bitvavo_*.py`**, niet onder `alpaca_bot/` / `kraken/`.
 - Standaard **post-only uit** (`POST_ONLY_LIMIT_ORDERS=False`), dichter bij Alpaca-limits; optioneel **`BITVAVO_POST_ONLY`** secret in Actions.
 - Journal naar CSV / metrics (alleen EUR-rijen uit JSONL): **`python -m metrics.bitvavo_compare`** — [`metrics/bitvavo_compare/README.md`](metrics/bitvavo_compare/README.md).
-- Run-audit JSONL (uurlijks): **`bitvavo_runs.jsonl`** / **`alpaca_runs.jsonl`** via **`bot_live/run_audit.py`**; vergelijken: **`python -m metrics.run_compare`** → `metrics/output/`.
+- Run-audit JSONL (uurlijks): **`bitvavo_runs.jsonl`** / **`alpaca_runs.jsonl`** / **`kraken_runs.jsonl`** via **`bot_live/run_audit.py`**; vergelijken: **`python -m metrics.run_compare`** → `metrics/output/`.

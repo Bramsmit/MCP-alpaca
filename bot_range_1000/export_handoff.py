@@ -8,7 +8,7 @@ Leest uit projectroot (indien aanwezig):
 Bevat GEEN API keys. Draai vanaf repo-root:
 
   python -m bot_range_1000.export_handoff
-  python -m bot_range_1000.export_handoff --output-dir exports --max-trades-md 100
+  python -m bot_range_1000.export_handoff --output-dir metrics --max-trades-md 100
 """
 
 from __future__ import annotations
@@ -204,8 +204,8 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=ROOT / "exports",
-        help="Directory voor uitvoer (default: ./exports)",
+        default=ROOT / "metrics",
+        help="Directory voor uitvoer (default: ./metrics)",
     )
     parser.add_argument(
         "--max-trades-md",

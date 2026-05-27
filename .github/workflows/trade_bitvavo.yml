@@ -1,66 +1,48 @@
-name: Trading Bot Bitvavo — Hourly
-
+name: Trading Bot — Bitvavo hourly
 on:
   schedule:
-    - cron: '0 * * * *'   # Elk uur op het hele uur
-  workflow_dispatch:       # Handmatig starten via GitHub UI
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   trade:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
-      # Journal: bitvavo_trades.jsonl (zie bot_live.bitvavo_trader + bot_live.journal.log_trade)
-      - name: Herstel state (orders + trades)
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             .bitvavo_trade_state.json
             bitvavo_trades.jsonl
             bitvavo_runs.jsonl
             .bitvavo_day_state.json
-          key: bitvavo-state-${{ runner.os }}-${{ github.run_id }}
+          key: bitvavo-state-${{ runner.os }}-${{ hashFiles('bitvavo_trades.jsonl', '.bitvavo_trade_state.json') }}
           restore-keys: |
             bitvavo-state-${{ runner.os }}-
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'bot_live/requirements.txt'
 
-      - name: Installeer dependencies
+      - name: Install dependencies
         run: pip install -r bot_live/requirements.txt
 
-      - name: Draai trading bot Bitvavo
-        id: trade
+      - name: Run Bitvavo bot
         env:
           BITVAVO_API_KEY: ${{ secrets.BITVAVO_API_KEY }}
           BITVAVO_SECRET_KEY: ${{ secrets.BITVAVO_SECRET_KEY }}
           BITVAVO_DRY_RUN: ${{ secrets.BITVAVO_DRY_RUN }}
-          # Optioneel: true = streng maker-only; false = soepeler (Alpaca-achtiger).
-          # Leeg laten = gebruik bot_live/bitvavo_config.POST_ONLY_LIMIT_ORDERS.
           BITVAVO_POST_ONLY: ${{ secrets.BITVAVO_POST_ONLY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.BITVAVO_TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}
         run: python -m bot_live.bitvavo_trader
 
-      - name: Artifact journals (download om te controleren)
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bitvavo-journals-${{ github.run_id }}
-          path: |
-            bitvavo_trades.jsonl
-            bitvavo_runs.jsonl
-            .bitvavo_trade_state.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Melding bij fout
+      - name: Notify on failure
         if: failure()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BITVAVO_TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}" \
-            -d "text=❌ Trading Bot Bitvavo heeft gefaald. Check GitHub Actions voor details."
+            -d "text=❌ Bitvavo bot gefaald. Check GitHub Actions."

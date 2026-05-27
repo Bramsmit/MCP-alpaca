@@ -1,0 +1,70 @@
+# Periodieke export van FILLED Alpaca-orders (CSV + JSON + summary) voor vergelijk
+# met andere venues. Artefact kan je downloaden onder Actions-run → Artifacts.
+
+name: Alpaca — vergelijkings-export API
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Laatste N UTC-kalenderdagen (incl. einde)
+        required: true
+        default: "30"
+      only_pool:
+        description: Alleen SYMBOL_POOL symbolen (true/false)
+        required: true
+        default: "true"
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installeer dependencies
+        run: pip install -r bot_live/requirements.txt
+
+      - name: Bepaal dagen en vlaggen
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "DAYS=${{ github.event.inputs.days }}" >> "$GITHUB_OUTPUT"
+            POOL="${{ github.event.inputs.only_pool }}"
+          else
+            echo "DAYS=30" >> "$GITHUB_OUTPUT"
+            POOL="true"
+          fi
+          if [ "$POOL" = "true" ]; then
+            echo "EXTRA=--only-config-symbols" >> "$GITHUB_OUTPUT"
+          else
+            echo "EXTRA=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Export FILLED orders (Alpaca API)
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          # Optioneel repo secret; leeg = zelfde default als lokaal (paper)
+          ALPACA_PAPER_TRADE: ${{ secrets.ALPACA_PAPER_TRADE }}
+        run: |
+          set -e
+          DAYS="${{ steps.vars.outputs.DAYS }}"
+          EXTRA="${{ steps.vars.outputs.EXTRA }}"
+          python -m bot_live.export_alpaca_orders \
+            --days "$DAYS" \
+            --output-dir metrics \
+            $EXTRA
+
+      - name: Upload export artefacten
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpaca-filled-orders-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            metrics/alpaca_filled_orders_*.csv
+            metrics/alpaca_filled_orders_*.json
+            metrics/alpaca_filled_orders_*_summary.md
+          if-no-files-found: warn
