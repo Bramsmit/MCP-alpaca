@@ -1,0 +1,5098 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "2a435dc7bd5ec5fb7a14c80da85724e5c642fe58",
+  "generatedAt": "2026-05-27T18:21:59.076Z",
+  "files": {
+    ".cursor/mcp.json.example": {
+      "filePath": ".cursor/mcp.json.example",
+      "contentHash": "46257bdc6b658c5dc29d2fc093ea94da47c6e7bcc46886f3a8cbf6d39d10a5b4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": false
+    },
+    ".cursor/rules/trading-bots-layout.mdc": {
+      "filePath": ".cursor/rules/trading-bots-layout.mdc",
+      "contentHash": "ee36ccf7a90f540100f20dde663e15179e78f91121c92e3771476fe620bed7a2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    ".env.example": {
+      "filePath": ".env.example",
+      "contentHash": "5daea791ce2f04915471ad3a5f3899f259efaf89a1d50a91f50bfb2cc34bcc7a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/alpaca_export_comparison.yml": {
+      "filePath": ".github/workflows/alpaca_export_comparison.yml",
+      "contentHash": "c9182d4141e20af1a6988299a1656ca575dcd05ed25031a10e588bfbca58840c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 71,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/daily_report.yml": {
+      "filePath": ".github/workflows/daily_report.yml",
+      "contentHash": "40cd1808054addfe8464843e62a33e091b978f38d8f2cfacfa140d0e855cba2e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 108,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/daily_status.yml": {
+      "filePath": ".github/workflows/daily_status.yml",
+      "contentHash": "abeccc57efc2dc466138580c47a40163b882d2b65f1d89cca929d13956ce3dec",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/trade_bitvavo.yml": {
+      "filePath": ".github/workflows/trade_bitvavo.yml",
+      "contentHash": "176168299cd021ccce01b18c5c60746bca322c8381e68e45c0fed592d0836574",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 49,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/trade_v2.yml": {
+      "filePath": ".github/workflows/trade_v2.yml",
+      "contentHash": "ed351f3b80cf2a0e127df450dc6e15a6c95185daf0d522275227e846e486f9d8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 54,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/trade.yml": {
+      "filePath": ".github/workflows/trade.yml",
+      "contentHash": "554db1defcf5a382cf71a696c8594a2e08e308c2b550651f453c9f578442ffdb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 84,
+      "hasStructuralAnalysis": true
+    },
+    ".understand-anything/.understandignore": {
+      "filePath": ".understand-anything/.understandignore",
+      "contentHash": "3acce797508540b8beab5625bbc14bf7f38848a5575ee51974c3a1ecc2a2689c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 54,
+      "hasStructuralAnalysis": false
+    },
+    "alpaca_bot/__init__.py": {
+      "filePath": "alpaca_bot/__init__.py",
+      "contentHash": "97ec41bea1fc7dcc7e1bb585c74304b86a5bee6b507dc7f408ceb13c4e26c7a3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "alpaca_bot/live_trader.py": {
+      "filePath": "alpaca_bot/live_trader.py",
+      "contentHash": "963eac161c43acc17a176d877163d6494eda334277223f287eb593927c70c5bb",
+      "functions": [
+        {
+          "name": "_fetch_alpaca_daily_rows",
+          "params": [
+            "data_client",
+            "symbols"
+          ],
+          "returnType": "dict[str, list[dict[str, float]]]",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "get_24h_levels",
+          "params": [
+            "data_client",
+            "symbols",
+            "min_spread_frac"
+          ],
+          "returnType": "dict[str, tuple[float, float]]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_get_levels_and_scores",
+          "params": [
+            "data_client",
+            "symbols",
+            "min_spread_frac"
+          ],
+          "returnType": "dict[str, tuple[float, float, float]]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "select_top_symbols",
+          "params": [
+            "data_client",
+            "trading_client",
+            "pool",
+            "n",
+            "ref_notional_usd"
+          ],
+          "returnType": "tuple[list[str], dict[str, tuple[float, float]]]",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "_order_age_hours",
+          "params": [
+            "order"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "run_once",
+          "params": [],
+          "exported": true,
+          "lineCount": 475
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 23
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "decimal",
+          "specifiers": [
+            "Decimal"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "alpaca.trading.requests",
+          "specifiers": [
+            "LimitOrderRequest"
+          ]
+        },
+        {
+          "source": "alpaca.trading.enums",
+          "specifiers": [
+            "OrderSide",
+            "OrderType",
+            "TimeInForce"
+          ]
+        },
+        {
+          "source": "alpaca.data.historical",
+          "specifiers": [
+            "CryptoHistoricalDataClient"
+          ]
+        },
+        {
+          "source": "alpaca.data.requests",
+          "specifiers": [
+            "CryptoBarsRequest"
+          ]
+        },
+        {
+          "source": "alpaca.data.timeframe",
+          "specifiers": [
+            "TimeFrame"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOL_POOL",
+            "SYMBOLS_ACTIVE",
+            "LEVELS_LOOKBACK_DAYS",
+            "ALPACA_CRYPTO_MIN_ORDER_REF_USD",
+            "ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD",
+            "ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT",
+            "required_min_spread_fraction_crypto_usd",
+            "STOP_LOSS_PER_UNIT",
+            "ORDER_UPDATE_THRESHOLD",
+            "ORDER_MAX_AGE_HOURS",
+            "ORDER_STALE_PRICE_THRESHOLD",
+            "ALPACA_CRYPTO_SINGLE_EXIT_ORDER",
+            "ORDER_REPLACE_DELAY_SEC"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram",
+            "notify_trade"
+          ]
+        },
+        {
+          "source": "bot_live.alpaca_runtime",
+          "specifiers": [
+            "get_trading_clients",
+            "get_current_prices",
+            "get_positions",
+            "get_open_orders",
+            "get_buying_power",
+            "get_portfolio_value",
+            "_find_position",
+            "_round_price",
+            "_sell_qty_decimal_from_position",
+            "_submit_crypto_sell",
+            "_check_and_notify_filled_orders",
+            "_save_state",
+            "MIN_SELLABLE_CRYPTO_QTY"
+          ]
+        },
+        {
+          "source": "bot_live.run_audit",
+          "specifiers": [
+            "ALPACA_RUNS_JSONL",
+            "log_run_audit"
+          ]
+        },
+        {
+          "source": "alpaca_bot.strategy_core",
+          "specifiers": [
+            "build_levels_scored_from_symbol_rows",
+            "levels_passing_spread",
+            "select_top_symbols_from_scores"
+          ]
+        }
+      ],
+      "exports": [
+        "_fetch_alpaca_daily_rows",
+        "get_24h_levels",
+        "_get_levels_and_scores",
+        "select_top_symbols",
+        "_order_age_hours",
+        "run_once",
+        "main"
+      ],
+      "totalLines": 685,
+      "hasStructuralAnalysis": true
+    },
+    "alpaca_bot/README.md": {
+      "filePath": "alpaca_bot/README.md",
+      "contentHash": "af4ac0626e9397237e78f81ad0285d9a56419e0f4e7fb1d5190c22e6154a0d64",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "alpaca_bot/strategy_core.py": {
+      "filePath": "alpaca_bot/strategy_core.py",
+      "contentHash": "d8c6c9065bee255c43c23fc40fc796057d6a80771d48cbb2a3182bc2faa280ea",
+      "functions": [
+        {
+          "name": "levels_score_from_daily_rows",
+          "params": [
+            "rows",
+            "min_spread_frac"
+          ],
+          "returnType": "tuple[float, float, float] | None",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "levels_passing_spread",
+          "params": [
+            "rows",
+            "min_spread_frac"
+          ],
+          "returnType": "tuple[float, float] | None",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "build_levels_scored_from_symbol_rows",
+          "params": [
+            "symbol_rows",
+            "pool",
+            "min_spread_frac"
+          ],
+          "returnType": "dict[str, tuple[float, float, float]]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "select_top_symbols_from_scores",
+          "params": [
+            "levels_scored",
+            "symbols_with_positions",
+            "n"
+          ],
+          "returnType": "tuple[list[str], dict[str, tuple[float, float]]]",
+          "exported": true,
+          "lineCount": 23
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "BUY_ABOVE_LOW_PCT",
+            "LEVELS_LOOKBACK_DAYS",
+            "SELL_BELOW_HIGH_PCT"
+          ]
+        }
+      ],
+      "exports": [
+        "levels_score_from_daily_rows",
+        "levels_passing_spread",
+        "build_levels_scored_from_symbol_rows",
+        "select_top_symbols_from_scores"
+      ],
+      "totalLines": 92,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/__init__.py": {
+      "filePath": "bot_hybrid/__init__.py",
+      "contentHash": "34e8e4f79def21c874e9a34a52010235e79a3a48ce42525a8e1973108ecba443",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/backtest_hybrid.py": {
+      "filePath": "bot_hybrid/backtest_hybrid.py",
+      "contentHash": "1d46fde0c305c268a4b0ec4810a3a8f05efa8ba99230786df777344d3aeaebf0",
+      "functions": [
+        {
+          "name": "fetch_hourly_data",
+          "params": [
+            "symbols",
+            "months"
+          ],
+          "returnType": "dict[str, pd.DataFrame]",
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "_pick_signal",
+          "params": [
+            "mode",
+            "regime",
+            "df",
+            "ctx"
+          ],
+          "returnType": "tuple[StrategySignal, str]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "run_backtest",
+          "params": [
+            "df",
+            "symbol",
+            "capital",
+            "mode"
+          ],
+          "returnType": "SymbolResult",
+          "exported": true,
+          "lineCount": 163
+        },
+        {
+          "name": "_format_row",
+          "params": [
+            "mode",
+            "results"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "_print_mode_results",
+          "params": [
+            "mode",
+            "results"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 47
+        }
+      ],
+      "classes": [
+        {
+          "name": "SymbolResult",
+          "methods": [
+            "return_pct",
+            "win_rate",
+            "max_drawdown",
+            "sharpe"
+          ],
+          "properties": [
+            "symbol",
+            "mode",
+            "start_capital",
+            "final_value",
+            "n_trades",
+            "n_wins",
+            "equity_curve",
+            "trades"
+          ],
+          "exported": true,
+          "lineCount": 40
+        },
+        {
+          "name": "_SimState",
+          "methods": [],
+          "properties": [
+            "cash",
+            "qty",
+            "avg_entry",
+            "highest_close",
+            "pending_buy",
+            "pending_buy_qty",
+            "pending_sell",
+            "stop_price",
+            "prev_regime",
+            "trades"
+          ],
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass",
+            "field"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Literal"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "bot_hybrid",
+          "specifiers": [
+            "range_strategy",
+            "trend_strategy"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOLS",
+            "START_CAPITAL",
+            "CAPITAL_PER_ASSET",
+            "BACKTEST_MONTHS",
+            "ADX_PERIOD",
+            "REGIME_CONFIRMATION_BARS",
+            "HYBRID_ADX_TREND_THRESHOLD",
+            "HYBRID_ADX_RANGE_THRESHOLD",
+            "HYBRID_REGIME_CONFIRMATION_BARS",
+            "HYBRID_RANGE_LOOKBACK_HOURS",
+            "RANGE_LOOKBACK_HOURS",
+            "EMA_FAST",
+            "EMA_SLOW"
+          ]
+        },
+        {
+          "source": "bot_hybrid.market_regime_detector",
+          "specifiers": [
+            "detect_regime"
+          ]
+        },
+        {
+          "source": "bot_hybrid.strategy_base",
+          "specifiers": [
+            "StrategyContext",
+            "StrategySignal"
+          ]
+        },
+        {
+          "source": "bot_live.hybrid_signals",
+          "specifiers": [
+            "pick_hybrid_signal"
+          ]
+        }
+      ],
+      "exports": [
+        "SymbolResult",
+        "fetch_hourly_data",
+        "_SimState",
+        "_pick_signal",
+        "run_backtest",
+        "_format_row",
+        "_print_mode_results",
+        "main"
+      ],
+      "totalLines": 446,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/hybrid_trader.py": {
+      "filePath": "bot_hybrid/hybrid_trader.py",
+      "contentHash": "ce9ee7b2e65876cc32f5590a288bc79496e4093cc21f973c3c91d35123f7fe6c",
+      "functions": [
+        {
+          "name": "_hybrid_state_path",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_load_hybrid_state",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_save_hybrid_state",
+          "params": [
+            "regimes",
+            "trend_trades"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "fetch_hourly_bars",
+          "params": [
+            "data_client",
+            "symbols",
+            "bars_needed"
+          ],
+          "returnType": "dict[str, pd.DataFrame]",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "_cancel_orders",
+          "params": [
+            "trading_client",
+            "orders",
+            "symbol",
+            "note"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_submit_limit_buy",
+          "params": [
+            "trading_client",
+            "symbol",
+            "qty",
+            "limit_price"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "_execute_signal",
+          "params": [
+            "trading_client",
+            "symbol",
+            "signal",
+            "ctx",
+            "open_orders",
+            "current_price"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 85
+        },
+        {
+          "name": "_log_regime_line",
+          "params": [
+            "symbol",
+            "snap",
+            "strategy",
+            "exec_status"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "run_once",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 139
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "asdict"
+          ]
+        },
+        {
+          "source": "decimal",
+          "specifiers": [
+            "Decimal"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "alpaca.data.requests",
+          "specifiers": [
+            "CryptoBarsRequest"
+          ]
+        },
+        {
+          "source": "alpaca.data.timeframe",
+          "specifiers": [
+            "TimeFrame"
+          ]
+        },
+        {
+          "source": "alpaca.trading.enums",
+          "specifiers": [
+            "OrderSide",
+            "OrderType",
+            "TimeInForce"
+          ]
+        },
+        {
+          "source": "alpaca.trading.requests",
+          "specifiers": [
+            "LimitOrderRequest"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOL_POOL",
+            "SYMBOLS_ACTIVE",
+            "CAPITAL_PER_ASSET",
+            "HYBRID_ENABLED",
+            "ADX_PERIOD",
+            "HYBRID_ADX_TREND_THRESHOLD",
+            "HYBRID_ADX_RANGE_THRESHOLD",
+            "HYBRID_REGIME_CONFIRMATION_BARS",
+            "HYBRID_RANGE_LOOKBACK_HOURS",
+            "EMA_FAST",
+            "EMA_SLOW",
+            "RANGE_LOOKBACK_HOURS",
+            "ORDER_UPDATE_THRESHOLD",
+            "ORDER_REPLACE_DELAY_SEC",
+            "ALPACA_CRYPTO_SINGLE_EXIT_ORDER",
+            "DRY_RUN"
+          ]
+        },
+        {
+          "source": "bot_live.alpaca_runtime",
+          "specifiers": [
+            "get_trading_clients",
+            "get_current_prices",
+            "get_positions",
+            "get_open_orders",
+            "get_buying_power",
+            "get_portfolio_value",
+            "_find_position",
+            "_round_price",
+            "_sell_qty_decimal_from_position",
+            "_submit_crypto_sell",
+            "_check_and_notify_filled_orders",
+            "MIN_SELLABLE_CRYPTO_QTY"
+          ]
+        },
+        {
+          "source": "bot_hybrid.market_regime_detector",
+          "specifiers": [
+            "RegimeSnapshot",
+            "detect_regime",
+            "get_prev_regime"
+          ]
+        },
+        {
+          "source": "bot_hybrid.strategy_base",
+          "specifiers": [
+            "StrategyContext",
+            "StrategySignal"
+          ]
+        },
+        {
+          "source": "bot_live.hybrid_signals",
+          "specifiers": [
+            "pick_hybrid_signal"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        }
+      ],
+      "exports": [
+        "_hybrid_state_path",
+        "_load_hybrid_state",
+        "_save_hybrid_state",
+        "fetch_hourly_bars",
+        "_cancel_orders",
+        "_submit_limit_buy",
+        "_execute_signal",
+        "_log_regime_line",
+        "run_once",
+        "main"
+      ],
+      "totalLines": 461,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/indicators.py": {
+      "filePath": "bot_hybrid/indicators.py",
+      "contentHash": "bcd379ae868aa8aa6ca6303a440ad15152f297ef60673eaab4a347602daa2d8c",
+      "functions": [
+        {
+          "name": "ema",
+          "params": [
+            "series",
+            "period"
+          ],
+          "returnType": "pd.Series",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_wilder",
+          "params": [
+            "series",
+            "period"
+          ],
+          "returnType": "pd.Series",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "true_range",
+          "params": [
+            "df"
+          ],
+          "returnType": "pd.Series",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "atr",
+          "params": [
+            "df",
+            "period"
+          ],
+          "returnType": "pd.Series",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "adx",
+          "params": [
+            "df",
+            "period"
+          ],
+          "returnType": "pd.DataFrame",
+          "exported": true,
+          "lineCount": 39
+        },
+        {
+          "name": "_sanity_check",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        }
+      ],
+      "exports": [
+        "ema",
+        "_wilder",
+        "true_range",
+        "atr",
+        "adx",
+        "_sanity_check"
+      ],
+      "totalLines": 124,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/market_regime_detector.py": {
+      "filePath": "bot_hybrid/market_regime_detector.py",
+      "contentHash": "5c300a87b9bd79007fb8c0d5755288cc61c701f1949f494eb38387636a27a460",
+      "functions": [
+        {
+          "name": "detect_regime",
+          "params": [
+            "df",
+            "prev_regime",
+            "adx_period",
+            "trend_threshold",
+            "range_threshold",
+            "confirmation_bars",
+            "ema_fast_period",
+            "ema_slow_period"
+          ],
+          "returnType": "RegimeSnapshot",
+          "exported": true,
+          "lineCount": 73
+        },
+        {
+          "name": "_default_state_path",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "load_regime_state",
+          "params": [
+            "path"
+          ],
+          "returnType": "dict[str, dict]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "save_regime_state",
+          "params": [
+            "regimes",
+            "path"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "get_prev_regime",
+          "params": [
+            "state",
+            "symbol"
+          ],
+          "returnType": "Regime",
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "RegimeSnapshot",
+          "methods": [
+            "as_log_line"
+          ],
+          "properties": [
+            "regime",
+            "prev_regime",
+            "adx",
+            "plus_di",
+            "minus_di",
+            "ema_fast",
+            "ema_slow",
+            "close",
+            "reason"
+          ],
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass",
+            "asdict"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Literal"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "bot_hybrid.indicators",
+          "specifiers": [
+            "ema",
+            "adx_indicator"
+          ]
+        }
+      ],
+      "exports": [
+        "RegimeSnapshot",
+        "detect_regime",
+        "_default_state_path",
+        "load_regime_state",
+        "save_regime_state",
+        "get_prev_regime"
+      ],
+      "totalLines": 173,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/range_strategy.py": {
+      "filePath": "bot_hybrid/range_strategy.py",
+      "contentHash": "4e50dcf5c9264ebc702a3bc16b2f4fd3386eaef2a0b501610d56949228e2f507",
+      "functions": [
+        {
+          "name": "_hybrid_mr_min_spread_pct",
+          "params": [
+            "ctx"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "compute_hourly_levels",
+          "params": [
+            "df",
+            "lookback",
+            "min_spread_pct"
+          ],
+          "returnType": "tuple[float, float, float] | None",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "generate_signal",
+          "params": [
+            "df",
+            "ctx",
+            "hybrid_range"
+          ],
+          "returnType": "StrategySignal",
+          "exported": true,
+          "lineCount": 66
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "BUY_ABOVE_LOW_PCT",
+            "SELL_BELOW_HIGH_PCT",
+            "MIN_SPREAD_PCT",
+            "RANGE_LOOKBACK_HOURS",
+            "HYBRID_RANGE_LOOKBACK_HOURS",
+            "HYBRID_MIN_SPREAD_PCT",
+            "ALPACA_CRYPTO_MIN_ORDER_REF_USD",
+            "ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD",
+            "ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT",
+            "RANGE_STOP_ATR_MULT",
+            "RISK_PER_TRADE_PCT",
+            "ADX_PERIOD"
+          ]
+        },
+        {
+          "source": "bot_hybrid.indicators",
+          "specifiers": [
+            "atr_indicator"
+          ]
+        },
+        {
+          "source": "bot_hybrid.risk_manager",
+          "specifiers": [
+            "position_size",
+            "range_stop_profile"
+          ]
+        },
+        {
+          "source": "bot_hybrid.strategy_base",
+          "specifiers": [
+            "StrategyContext",
+            "StrategySignal"
+          ]
+        }
+      ],
+      "exports": [
+        "_hybrid_mr_min_spread_pct",
+        "compute_hourly_levels",
+        "generate_signal"
+      ],
+      "totalLines": 140,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/risk_manager.py": {
+      "filePath": "bot_hybrid/risk_manager.py",
+      "contentHash": "6732e171147cef4129a4bd52364361678a7e2f64beefa784a08a865bb6b165f8",
+      "functions": [
+        {
+          "name": "position_size",
+          "params": [
+            "equity",
+            "entry",
+            "stop",
+            "risk_pct",
+            "capital_cap"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "range_stop_profile",
+          "params": [
+            "entry",
+            "atr_value",
+            "sell_level",
+            "atr_mult"
+          ],
+          "returnType": "StopProfile",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "trend_stop_profile",
+          "params": [
+            "entry",
+            "atr_value",
+            "atr_mult",
+            "trailing_pct"
+          ],
+          "returnType": "StopProfile",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "trailing_stop_price",
+          "params": [
+            "highest_close_since_entry",
+            "trailing_pct"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [
+        {
+          "name": "StopProfile",
+          "methods": [
+            "describe"
+          ],
+          "properties": [
+            "stop_price",
+            "take_profit",
+            "trailing_pct"
+          ],
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "imports": [
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Literal"
+          ]
+        }
+      ],
+      "exports": [
+        "StopProfile",
+        "position_size",
+        "range_stop_profile",
+        "trend_stop_profile",
+        "trailing_stop_price"
+      ],
+      "totalLines": 107,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/strategy_base.py": {
+      "filePath": "bot_hybrid/strategy_base.py",
+      "contentHash": "7a1d4ba1c32575b8cacc65cd1ed438ad8378db24c4ba2d5e17f87d7e7115626a",
+      "functions": [],
+      "classes": [
+        {
+          "name": "StrategyContext",
+          "methods": [],
+          "properties": [
+            "symbol",
+            "current_price",
+            "equity",
+            "capital_cap",
+            "has_position",
+            "position_qty",
+            "avg_entry_price",
+            "highest_close_since_entry"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "StrategySignal",
+          "methods": [
+            "as_log_line"
+          ],
+          "properties": [
+            "action",
+            "reason",
+            "strategy",
+            "entry_price",
+            "exit_price",
+            "stop_price",
+            "qty",
+            "trailing_pct"
+          ],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "imports": [
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Literal"
+          ]
+        }
+      ],
+      "exports": [
+        "StrategyContext",
+        "StrategySignal"
+      ],
+      "totalLines": 59,
+      "hasStructuralAnalysis": true
+    },
+    "bot_hybrid/trend_strategy.py": {
+      "filePath": "bot_hybrid/trend_strategy.py",
+      "contentHash": "227b10a5ab9ee5b7024339f9b20a7d23ce08a6af6de01ec608a3bcb49c0b3e03",
+      "functions": [
+        {
+          "name": "_recent_golden_cross",
+          "params": [
+            "fast",
+            "slow",
+            "lookback"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "generate_signal",
+          "params": [
+            "df",
+            "ctx"
+          ],
+          "returnType": "StrategySignal",
+          "exported": true,
+          "lineCount": 130
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "EMA_FAST",
+            "EMA_SLOW",
+            "ADX_PERIOD",
+            "ADX_TREND_THRESHOLD",
+            "TREND_TRAILING_STOP_PCT",
+            "TREND_STOP_ATR_MULT",
+            "TREND_CROSSOVER_LOOKBACK_BARS",
+            "RISK_PER_TRADE_PCT"
+          ]
+        },
+        {
+          "source": "bot_hybrid.indicators",
+          "specifiers": [
+            "ema",
+            "adx_indicator",
+            "atr_indicator"
+          ]
+        },
+        {
+          "source": "bot_hybrid.risk_manager",
+          "specifiers": [
+            "position_size",
+            "trend_stop_profile",
+            "trailing_stop_price"
+          ]
+        },
+        {
+          "source": "bot_hybrid.strategy_base",
+          "specifiers": [
+            "StrategyContext",
+            "StrategySignal"
+          ]
+        }
+      ],
+      "exports": [
+        "_recent_golden_cross",
+        "generate_signal"
+      ],
+      "totalLines": 179,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/__init__.py": {
+      "filePath": "bot_live/__init__.py",
+      "contentHash": "43a2583bff2067c5e5feb41085eb8b12fd3531e6dcd3df859f40e4556614db30",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/alpaca_runtime.py": {
+      "filePath": "bot_live/alpaca_runtime.py",
+      "contentHash": "ddb7346d470f89adffb9b79ddfb4bbf9a7b44f3d75c5575f63db8ac6477a4574",
+      "functions": [
+        {
+          "name": "_alpaca_bot_trade_log_path",
+          "params": [],
+          "returnType": "Path | None",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_order_audit_snapshot",
+          "params": [
+            "o"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "append_alpaca_bot_fill_audit",
+          "params": [
+            "record"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "get_trading_clients",
+          "params": [],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "get_current_prices",
+          "params": [
+            "data_client",
+            "symbols"
+          ],
+          "returnType": "dict[str, float]",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "_round_price",
+          "params": [
+            "price"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_norm_symbol",
+          "params": [
+            "s"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_position_qty_float",
+          "params": [
+            "p"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "get_positions",
+          "params": [
+            "trading_client",
+            "symbols"
+          ],
+          "returnType": "dict[str, tuple[float, float]]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_find_position",
+          "params": [
+            "trading_client",
+            "symbol"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_decimal_from_json_qty",
+          "params": [
+            "raw"
+          ],
+          "returnType": "Decimal | None",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_sell_qty_decimal_from_position",
+          "params": [
+            "p"
+          ],
+          "returnType": "Decimal",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "_decimal_to_submit_sell_qty",
+          "params": [
+            "d"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_submit_crypto_sell",
+          "params": [
+            "trading_client",
+            "symbol",
+            "position",
+            "limit_sell"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_open_orders",
+          "params": [
+            "trading_client",
+            "symbol"
+          ],
+          "returnType": "list",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "get_buying_power",
+          "params": [
+            "trading_client"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_portfolio_value",
+          "params": [
+            "trading_client"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_state_path",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "get_cumulative_fictive_fees_usd",
+          "params": [],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_parse_order_ts",
+          "params": [
+            "val"
+          ],
+          "returnType": "datetime",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_order_fill_sort_ts",
+          "params": [
+            "o"
+          ],
+          "returnType": "datetime",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_load_state",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "_save_state",
+          "params": [
+            "entries",
+            "notified_ids",
+            "cumulative_fictive_fees_usd"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_known_notified_order_ids",
+          "params": [],
+          "returnType": "set[str]",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "_apply_buy_to_entries",
+          "params": [
+            "entries",
+            "sym",
+            "qty",
+            "price"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_check_and_notify_filled_orders",
+          "params": [
+            "trading_client",
+            "symbols"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 137
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "decimal",
+          "specifiers": [
+            "Decimal"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "alpaca.trading.client",
+          "specifiers": [
+            "TradingClient"
+          ]
+        },
+        {
+          "source": "alpaca.trading.requests",
+          "specifiers": [
+            "LimitOrderRequest",
+            "GetOrdersRequest"
+          ]
+        },
+        {
+          "source": "alpaca.trading.enums",
+          "specifiers": [
+            "OrderSide",
+            "OrderType",
+            "TimeInForce",
+            "QueryOrderStatus",
+            "OrderStatus"
+          ]
+        },
+        {
+          "source": "alpaca.data.historical",
+          "specifiers": [
+            "CryptoHistoricalDataClient"
+          ]
+        },
+        {
+          "source": "alpaca.data.requests",
+          "specifiers": [
+            "CryptoLatestQuoteRequest"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "ALPACA_FILLED_ORDERS_LOOKBACK_HOURS",
+            "BITVAVO_FEE_BUY_RATE",
+            "BITVAVO_FEE_SELL_LIMIT_RATE",
+            "JOURNAL_FIXED_FEE_PER_FILL_USD",
+            "SYMBOL_POOL",
+            "TELEGRAM_NOTIFY_BUY_FILLS"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "notify_trade_filled"
+          ]
+        },
+        {
+          "source": "bot_live.journal",
+          "specifiers": [
+            "known_order_ids",
+            "log_trade"
+          ]
+        }
+      ],
+      "exports": [
+        "_alpaca_bot_trade_log_path",
+        "_order_audit_snapshot",
+        "append_alpaca_bot_fill_audit",
+        "get_trading_clients",
+        "get_current_prices",
+        "_round_price",
+        "_norm_symbol",
+        "_position_qty_float",
+        "get_positions",
+        "_find_position",
+        "_decimal_from_json_qty",
+        "_sell_qty_decimal_from_position",
+        "_decimal_to_submit_sell_qty",
+        "_submit_crypto_sell",
+        "get_open_orders",
+        "get_buying_power",
+        "get_portfolio_value",
+        "_state_path",
+        "get_cumulative_fictive_fees_usd",
+        "_parse_order_ts",
+        "_order_fill_sort_ts",
+        "_load_state",
+        "_save_state",
+        "_known_notified_order_ids",
+        "_apply_buy_to_entries",
+        "_check_and_notify_filled_orders"
+      ],
+      "totalLines": 534,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/bitvavo_config.py": {
+      "filePath": "bot_live/bitvavo_config.py",
+      "contentHash": "418a119598b6543a3bfa6b04aaf11e43984e5220491863ab45f9f04b08c7dddd",
+      "functions": [
+        {
+          "name": "required_min_spread_fraction",
+          "params": [
+            "ref_notional_eur"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "required_min_spread_fraction"
+      ],
+      "totalLines": 90,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/bitvavo_daily_report.py": {
+      "filePath": "bot_live/bitvavo_daily_report.py",
+      "contentHash": "48cf62c551841bd2d3116858e531b0f9e3edd21160a155c9ea2e5e191c3aa2a7",
+      "functions": [
+        {
+          "name": "save_day_start",
+          "params": [
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "load_day_start",
+          "params": [],
+          "returnType": "tuple[str | None, float | None]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "send_daily_report",
+          "params": [
+            "exchange"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "bot_live.bitvavo_trader",
+          "specifiers": [
+            "get_exchange",
+            "get_portfolio_value"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        }
+      ],
+      "exports": [
+        "save_day_start",
+        "load_day_start",
+        "send_daily_report",
+        "main"
+      ],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/bitvavo_trader.py": {
+      "filePath": "bot_live/bitvavo_trader.py",
+      "contentHash": "a7514b8a44a789038ab80597ed8aa201a7801e30198fbc92ad51f1959b7f37ae",
+      "functions": [
+        {
+          "name": "get_exchange",
+          "params": [],
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "get_balance",
+          "params": [
+            "exchange"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "get_portfolio_value",
+          "params": [
+            "exchange"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "_trade_fee_in_eur",
+          "params": [
+            "exchange",
+            "trade",
+            "symbol"
+          ],
+          "returnType": "float | None",
+          "exported": true,
+          "lineCount": 51
+        },
+        {
+          "name": "get_current_prices",
+          "params": [
+            "exchange",
+            "symbols"
+          ],
+          "returnType": "dict[str, float]",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_24h_levels",
+          "params": [
+            "exchange",
+            "symbols",
+            "min_spread_frac"
+          ],
+          "returnType": "dict[str, tuple[float, float]]",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "_get_levels_and_scores",
+          "params": [
+            "exchange",
+            "symbols",
+            "min_spread_frac"
+          ],
+          "returnType": "dict[str, tuple[float, float, float]]",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "get_positions",
+          "params": [
+            "exchange",
+            "symbols"
+          ],
+          "returnType": "dict[str, float]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "get_free_sell_qty",
+          "params": [
+            "exchange",
+            "symbol"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "select_top_symbols",
+          "params": [
+            "exchange",
+            "pool",
+            "n",
+            "ref_notional_eur"
+          ],
+          "returnType": "tuple[list[str], dict[str, tuple[float, float]]]",
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "get_bot_open_orders",
+          "params": [
+            "exchange",
+            "symbol",
+            "bot_order_ids"
+          ],
+          "returnType": "list",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_order_age_hours",
+          "params": [
+            "order"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_round_amount",
+          "params": [
+            "exchange",
+            "symbol",
+            "amount"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_round_price",
+          "params": [
+            "exchange",
+            "symbol",
+            "price"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_limit_order_params",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_order_size_ok",
+          "params": [
+            "exchange",
+            "symbol",
+            "qty",
+            "price"
+          ],
+          "returnType": "tuple[bool, str]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_path",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_load_state",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "_save_state",
+          "params": [
+            "entries",
+            "notified_ids",
+            "bot_orders"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_check_and_notify_filled_trades",
+          "params": [
+            "exchange",
+            "symbols",
+            "state_entries"
+          ],
+          "returnType": "tuple[int, dict]",
+          "exported": true,
+          "lineCount": 106
+        },
+        {
+          "name": "run_once",
+          "params": [],
+          "exported": true,
+          "lineCount": 391
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "ccxt",
+          "specifiers": [
+            "ccxt"
+          ]
+        },
+        {
+          "source": "bot_live.bitvavo_config",
+          "specifiers": [
+            "SYMBOL_POOL",
+            "SYMBOLS_ACTIVE",
+            "MAX_CAPITAL_EUR",
+            "LEVELS_LOOKBACK_DAYS",
+            "BUY_ABOVE_LOW_PCT",
+            "SELL_BELOW_HIGH_PCT",
+            "MIN_SPREAD_PCT",
+            "ESTIMATED_ROUND_TRIP_FEE_PCT",
+            "FEE_MAKER_PCT",
+            "FEE_FIXED_PER_SIDE_EUR",
+            "ROUND_TRIP_FIXED_FEE_EUR",
+            "MIN_ORDER_REF_EUR",
+            "MIN_LIMIT_SELL_PRICE_MULT",
+            "required_min_spread_fraction",
+            "POST_ONLY_LIMIT_ORDERS",
+            "ORDER_UPDATE_THRESHOLD",
+            "ORDER_MAX_AGE_HOURS",
+            "ORDER_STALE_PRICE_THRESHOLD",
+            "ORDER_REPLACE_DELAY_SEC",
+            "FILLS_LOOKBACK_HOURS"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "TELEGRAM_NOTIFY_BUY_FILLS"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram",
+            "notify_trade_filled"
+          ]
+        },
+        {
+          "source": "bot_live.journal",
+          "specifiers": [
+            "known_order_ids",
+            "log_trade"
+          ]
+        },
+        {
+          "source": "bot_live.run_audit",
+          "specifiers": [
+            "BITVAVO_RUNS_JSONL",
+            "log_run_audit"
+          ]
+        }
+      ],
+      "exports": [
+        "get_exchange",
+        "get_balance",
+        "get_portfolio_value",
+        "_trade_fee_in_eur",
+        "get_current_prices",
+        "get_24h_levels",
+        "_get_levels_and_scores",
+        "get_positions",
+        "get_free_sell_qty",
+        "select_top_symbols",
+        "get_bot_open_orders",
+        "_order_age_hours",
+        "_round_amount",
+        "_round_price",
+        "_limit_order_params",
+        "_order_size_ok",
+        "_state_path",
+        "_load_state",
+        "_save_state",
+        "_check_and_notify_filled_trades",
+        "run_once",
+        "main"
+      ],
+      "totalLines": 936,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/cancel_all_orders.py": {
+      "filePath": "bot_live/cancel_all_orders.py",
+      "contentHash": "3d0f87fa35e8d3832240f0f84ac48658fbe8c0829ef76d65649983229d6984e6",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 32
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "ccxt",
+          "specifiers": [
+            "ccxt"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOL_POOL"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 57,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/config.py": {
+      "filePath": "bot_live/config.py",
+      "contentHash": "d4d11beb4e4fd42be27e22d7c85c70633e3ab7ac44fd15415643552fd56b51a1",
+      "functions": [
+        {
+          "name": "required_min_spread_fraction_crypto_usd",
+          "params": [
+            "ref_notional_usd"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "_os_journal_fees"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "_os_hybrid"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "_os"
+          ]
+        }
+      ],
+      "exports": [
+        "required_min_spread_fraction_crypto_usd"
+      ],
+      "totalLines": 148,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/daily_report.py": {
+      "filePath": "bot_live/daily_report.py",
+      "contentHash": "4603f4cc6ff9e64014db32495a650f2c5c9288350508ce2055811b33750c032e",
+      "functions": [
+        {
+          "name": "save_day_start",
+          "params": [
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "load_day_start",
+          "params": [],
+          "returnType": "tuple[str | None, float | None]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "send_daily_report",
+          "params": [
+            "trading_client"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "bot_live.alpaca_runtime",
+          "specifiers": [
+            "get_trading_clients",
+            "get_portfolio_value",
+            "get_cumulative_fictive_fees_usd"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        }
+      ],
+      "exports": [
+        "save_day_start",
+        "load_day_start",
+        "send_daily_report",
+        "main"
+      ],
+      "totalLines": 79,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/export_alpaca_orders.py": {
+      "filePath": "bot_live/export_alpaca_orders.py",
+      "contentHash": "497f8ea54b7d25bbf939a7fc1f0eecaee780b4fcdd366548e83636569a138847",
+      "functions": [
+        {
+          "name": "_parse_utc_date",
+          "params": [
+            "s"
+          ],
+          "returnType": "date",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_utc_range_inclusive",
+          "params": [
+            "start_d",
+            "end_d"
+          ],
+          "returnType": "tuple[datetime, datetime]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_order_ts",
+          "params": [
+            "o"
+          ],
+          "returnType": "datetime | None",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_is_in_window",
+          "params": [
+            "o",
+            "lo",
+            "hi_exclusive"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_norm_symbol",
+          "params": [
+            "sym"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "fetch_filled_orders",
+          "params": [
+            "trading_client",
+            "lo",
+            "hi_exclusive",
+            "symbols_filter",
+            "submit_lookback"
+          ],
+          "returnType": "list",
+          "exported": true,
+          "lineCount": 61
+        },
+        {
+          "name": "_order_to_row",
+          "params": [
+            "o"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "_write_summary_md",
+          "params": [
+            "path",
+            "meta",
+            "n_buys",
+            "n_sells"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "_write_csv",
+          "params": [
+            "path",
+            "rows"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 134
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "csv",
+          "specifiers": [
+            "csv"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "Counter"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "date",
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "alpaca.common.enums",
+          "specifiers": [
+            "Sort"
+          ]
+        },
+        {
+          "source": "alpaca.trading.enums",
+          "specifiers": [
+            "OrderStatus",
+            "QueryOrderStatus"
+          ]
+        },
+        {
+          "source": "alpaca.trading.requests",
+          "specifiers": [
+            "GetOrdersRequest"
+          ]
+        },
+        {
+          "source": "bot_live.alpaca_runtime",
+          "specifiers": [
+            "get_trading_clients"
+          ]
+        }
+      ],
+      "exports": [
+        "_parse_utc_date",
+        "_utc_range_inclusive",
+        "_order_ts",
+        "_is_in_window",
+        "_norm_symbol",
+        "fetch_filled_orders",
+        "_order_to_row",
+        "_write_summary_md",
+        "_write_csv",
+        "main"
+      ],
+      "totalLines": 356,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/export_trade_log.py": {
+      "filePath": "bot_live/export_trade_log.py",
+      "contentHash": "7b0cfe8e191aedd32ddeaa7aaceac133cc4f20be07150eca61f3995a660d1d7d",
+      "functions": [
+        {
+          "name": "_enrich",
+          "params": [
+            "record"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_load_jsonl",
+          "params": [
+            "path"
+          ],
+          "returnType": "dict[str, dict]",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "merge_and_export",
+          "params": [
+            "source_jsonl"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 49
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "csv",
+          "specifiers": [
+            "csv"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "_enrich",
+        "_load_jsonl",
+        "merge_and_export"
+      ],
+      "totalLines": 142,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/hybrid_signals.py": {
+      "filePath": "bot_live/hybrid_signals.py",
+      "contentHash": "19eca485f055c80b7cd508119ae843ad4cc1f754e9b6eb411415d0b3cd4d4e5f",
+      "functions": [
+        {
+          "name": "pick_hybrid_signal",
+          "params": [
+            "df",
+            "ctx",
+            "snap"
+          ],
+          "returnType": "tuple[StrategySignal, str]",
+          "exported": true,
+          "lineCount": 82
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "bot_hybrid",
+          "specifiers": [
+            "range_strategy",
+            "trend_strategy"
+          ]
+        },
+        {
+          "source": "bot_hybrid.market_regime_detector",
+          "specifiers": [
+            "RegimeSnapshot"
+          ]
+        },
+        {
+          "source": "bot_hybrid.strategy_base",
+          "specifiers": [
+            "StrategyContext",
+            "StrategySignal"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "HYBRID_UNCERTAINTY_MAX_ADX_FOR_RANGE"
+          ]
+        }
+      ],
+      "exports": [
+        "pick_hybrid_signal"
+      ],
+      "totalLines": 99,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/journal.py": {
+      "filePath": "bot_live/journal.py",
+      "contentHash": "959f5a93d57e3bd1c250959bfeb2a8bf340d8efd0309741442fcc0b96e04c994",
+      "functions": [
+        {
+          "name": "_journal_path",
+          "params": [
+            "filename"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "log_trade",
+          "params": [
+            "order_id",
+            "symbol",
+            "side",
+            "qty",
+            "price",
+            "entry_price",
+            "profit",
+            "portfolio_value",
+            "fee_eur",
+            "journal_filename",
+            "journal_fixed_fee_per_fill"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 57
+        },
+        {
+          "name": "known_order_ids",
+          "params": [
+            "journal_filename"
+          ],
+          "returnType": "frozenset[str]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "load_trades",
+          "params": [
+            "journal_filename"
+          ],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "BITVAVO_FEE_BUY_RATE",
+            "JOURNAL_FIXED_FEE_PER_FILL_USD"
+          ]
+        }
+      ],
+      "exports": [
+        "_journal_path",
+        "log_trade",
+        "known_order_ids",
+        "load_trades"
+      ],
+      "totalLines": 111,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/report.py": {
+      "filePath": "bot_live/report.py",
+      "contentHash": "b76d73c28753e82fe173bce2da81a92e373f7df12297dfd4f03250abc38c50c5",
+      "functions": [
+        {
+          "name": "_parse_args",
+          "params": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "build_report",
+          "params": [
+            "days",
+            "show_all"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 64
+        },
+        {
+          "name": "format_report",
+          "params": [
+            "r"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 44
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "bot_live.journal",
+          "specifiers": [
+            "load_trades"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        }
+      ],
+      "exports": [
+        "_parse_args",
+        "build_report",
+        "format_report",
+        "main"
+      ],
+      "totalLines": 160,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/requirements.txt": {
+      "filePath": "bot_live/requirements.txt",
+      "contentHash": "9c992b03c516662b003161ca614f9a7c25e5598b1d8855275f12be070eeb53c5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": false
+    },
+    "bot_live/run_audit.py": {
+      "filePath": "bot_live/run_audit.py",
+      "contentHash": "a20c35eace52479419cd1ef62d391298776caaefc1c2847b3215bc1f67afbbe0",
+      "functions": [
+        {
+          "name": "_audit_path",
+          "params": [
+            "filename"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "log_run_audit",
+          "params": [
+            "record",
+            "filename"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "load_run_audits",
+          "params": [
+            "filename"
+          ],
+          "returnType": "list[dict[str, Any]]",
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "_audit_path",
+        "log_run_audit",
+        "load_run_audits"
+      ],
+      "totalLines": 61,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/run_loop.py": {
+      "filePath": "bot_live/run_loop.py",
+      "contentHash": "af853b7d15e08b0701383581dcbabe2a72885494e2c065c187f55be5d44f59b4",
+      "functions": [
+        {
+          "name": "_init_day_start",
+          "params": [
+            "trading_client"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "bot_range_1000.live_trader",
+          "specifiers": [
+            "run_once"
+          ]
+        },
+        {
+          "source": "bot_live.alpaca_runtime",
+          "specifiers": [
+            "get_trading_clients",
+            "get_portfolio_value"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        },
+        {
+          "source": "bot_live.daily_report",
+          "specifiers": [
+            "send_daily_report",
+            "save_day_start",
+            "load_day_start"
+          ]
+        }
+      ],
+      "exports": [
+        "_init_day_start",
+        "main"
+      ],
+      "totalLines": 68,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/status.py": {
+      "filePath": "bot_live/status.py",
+      "contentHash": "b5f711f401686c7f9fb9d4072cbaf4eed07d3a23923315b1a4c12f8a42b389d0",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 70
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "alpaca.trading.enums",
+          "specifiers": [
+            "OrderSide"
+          ]
+        },
+        {
+          "source": "bot_live.alpaca_runtime",
+          "specifiers": [
+            "get_trading_clients",
+            "get_current_prices",
+            "get_positions",
+            "get_open_orders",
+            "get_portfolio_value",
+            "get_buying_power"
+          ]
+        },
+        {
+          "source": "bot_range_1000.live_trader",
+          "specifiers": [
+            "select_top_symbols"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOL_POOL",
+            "SYMBOLS_ACTIVE",
+            "ALPACA_CRYPTO_MIN_ORDER_REF_USD"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 114,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/telegram.py": {
+      "filePath": "bot_live/telegram.py",
+      "contentHash": "419997a6c93a9c8aa5e1af671b017eae7c365bb4dd2fd515c1d696d8409c6837",
+      "functions": [
+        {
+          "name": "send_telegram",
+          "params": [
+            "message"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "_quote_for_symbol",
+          "params": [
+            "symbol"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "notify_trade",
+          "params": [
+            "side",
+            "symbol",
+            "qty",
+            "price",
+            "order_id"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_currency_prefix",
+          "params": [
+            "currency_label"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "notify_trade_filled",
+          "params": [
+            "side",
+            "symbol",
+            "qty",
+            "price",
+            "profit",
+            "portfolio_value",
+            "entry_price",
+            "fee_buy_rate",
+            "fee_sell_rate",
+            "fixed_fee_per_fill",
+            "currency_label",
+            "fee_eur",
+            "fee_estimated",
+            "send_telegram_message"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 86
+        },
+        {
+          "name": "notify_stop_loss",
+          "params": [
+            "symbol",
+            "qty",
+            "price"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "BITVAVO_FEE_BUY_RATE",
+            "BITVAVO_FEE_SELL_LIMIT_RATE",
+            "JOURNAL_FIXED_FEE_PER_FILL_USD",
+            "TELEGRAM_NOTIFY_BUY_FILLS"
+          ]
+        }
+      ],
+      "exports": [
+        "send_telegram",
+        "_quote_for_symbol",
+        "notify_trade",
+        "_currency_prefix",
+        "notify_trade_filled",
+        "notify_stop_loss"
+      ],
+      "totalLines": 170,
+      "hasStructuralAnalysis": true
+    },
+    "bot_live/test_telegram.py": {
+      "filePath": "bot_live/test_telegram.py",
+      "contentHash": "11fd74f823f66175b0c4af80572164aef3c93e44faa9c6acd1f30e8e6d3045d8",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/__init__.py": {
+      "filePath": "bot_range_1000/__init__.py",
+      "contentHash": "4b3fdf67a39e4814d2d0042b6a6ac5ae52825db6d9e2e6696f57d221141287cf",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/backtest_all.py": {
+      "filePath": "bot_range_1000/backtest_all.py",
+      "contentHash": "4b351348d54e81f41ba4a189eafd5b8ad6f0c02d65dca4983d273e160cd5c794",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 28
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOL_POOL",
+            "BUY_ABOVE_LOW_PCT",
+            "SELL_BELOW_HIGH_PCT",
+            "MIN_SPREAD_PCT",
+            "STOP_LOSS_PER_UNIT",
+            "CAPITAL_PER_ASSET"
+          ]
+        },
+        {
+          "source": "bot_range_1000.backtest",
+          "specifiers": [
+            "fetch_data",
+            "run_backtest"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/backtest.py": {
+      "filePath": "bot_range_1000/backtest.py",
+      "contentHash": "5df380b3c5de68f84b124943d4f1a2309e003ac8693f1d337620a18ecb4c7b16",
+      "functions": [
+        {
+          "name": "fetch_data",
+          "params": [
+            "symbols",
+            "months"
+          ],
+          "returnType": "dict[str, pd.DataFrame]",
+          "exported": true,
+          "lineCount": 38
+        },
+        {
+          "name": "run_backtest",
+          "params": [
+            "df",
+            "symbol",
+            "capital",
+            "stop_loss_per_unit"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 71
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 66
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOLS",
+            "START_CAPITAL",
+            "CAPITAL_PER_ASSET",
+            "LEVELS_LOOKBACK_DAYS",
+            "BUY_ABOVE_LOW_PCT",
+            "SELL_BELOW_HIGH_PCT",
+            "MIN_SPREAD_PCT",
+            "BITVAVO_FEE_BUY_RATE",
+            "BITVAVO_FEE_SELL_LIMIT_RATE",
+            "BITVAVO_FEE_SELL_TAKER_RATE",
+            "STOP_LOSS_VALUES_TO_TEST",
+            "BACKTEST_MONTHS"
+          ]
+        }
+      ],
+      "exports": [
+        "fetch_data",
+        "run_backtest",
+        "main"
+      ],
+      "totalLines": 223,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/export_handoff.py": {
+      "filePath": "bot_range_1000/export_handoff.py",
+      "contentHash": "e87b26de57b1ea773c3e43307763de56e98b97b55961db93189695710bac9a4c",
+      "functions": [
+        {
+          "name": "_utc_stamp",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_load_state_summary",
+          "params": [
+            "path"
+          ],
+          "returnType": "dict | None",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "_config_snapshot",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "_trade_summary",
+          "params": [
+            "trades"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 38
+        },
+        {
+          "name": "_write_json",
+          "params": [
+            "path",
+            "payload"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_write_md",
+          "params": [
+            "path",
+            "payload",
+            "max_trades_md"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 72
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 54
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "_utc_stamp",
+        "_load_state_summary",
+        "_config_snapshot",
+        "_trade_summary",
+        "_write_json",
+        "_write_md",
+        "main"
+      ],
+      "totalLines": 259,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/live_trader.py": {
+      "filePath": "bot_range_1000/live_trader.py",
+      "contentHash": "84276f5f1ce96ea2fd099042725217d380fcbcad3aa4da623373d4f351688794",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "alpaca_bot.live_trader",
+          "specifiers": [
+            "main",
+            "run_once",
+            "select_top_symbols"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/README.md": {
+      "filePath": "bot_range_1000/README.md",
+      "contentHash": "6f700f8bb69ebfdf41710bdfefbdaf111c0503ca2936cbd7c502d9a6e86e4f2f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 99,
+      "hasStructuralAnalysis": true
+    },
+    "bot_range_1000/run_live.sh": {
+      "filePath": "bot_range_1000/run_live.sh",
+      "contentHash": "fd4a89ef75a5c51806b74c2c44fb0c81a230a90a3c257e12b263e195bf924453",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": true
+    },
+    "data/alpaca_trades.csv": {
+      "filePath": "data/alpaca_trades.csv",
+      "contentHash": "0fa5143a0d63c769b4c225fa1fb7814223b4cc998b8cece98431f26c75137a35",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 216,
+      "hasStructuralAnalysis": false
+    },
+    "data/alpaca_trades.jsonl": {
+      "filePath": "data/alpaca_trades.jsonl",
+      "contentHash": "caf10b6a8f71baac72038d6680995f7bb8b79c552950a589d6401ae7cca1d564",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 215,
+      "hasStructuralAnalysis": false
+    },
+    "data/README.md": {
+      "filePath": "data/README.md",
+      "contentHash": "e03abb0a95fb853f82458674e8b47d8cb6ac8b0258775a03e20236731571cd55",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 30,
+      "hasStructuralAnalysis": true
+    },
+    "docs/ALPACA_CRYPTO_LIMITATIONS.md": {
+      "filePath": "docs/ALPACA_CRYPTO_LIMITATIONS.md",
+      "contentHash": "5c67d955ae391fc60c1a7825b9159fbd5f16bfac4d66ab2154edf012c971475a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    "docs/CODEBASE_CONTEXT_FOR_V2.md": {
+      "filePath": "docs/CODEBASE_CONTEXT_FOR_V2.md",
+      "contentHash": "88e0aea5bdd6467877f1ddd5dbd0b58ad75077fbe201ccf0da21b57a085b3f1f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 139,
+      "hasStructuralAnalysis": true
+    },
+    "docs/DEPLOY.md": {
+      "filePath": "docs/DEPLOY.md",
+      "contentHash": "56c3eb9c527a04f1786e7a5a6f5cd1936bf0929155a7204d7f34136d4f5735b1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 112,
+      "hasStructuralAnalysis": true
+    },
+    "docs/GITHUB_SETUP.md": {
+      "filePath": "docs/GITHUB_SETUP.md",
+      "contentHash": "fb9a0343729bacff1df9d578e90c20d485a8e604f0003dd75b19b4394fe5d814",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    "docs/NEW_BOT_IDEAS.md": {
+      "filePath": "docs/NEW_BOT_IDEAS.md",
+      "contentHash": "29c7a13269fd6fd88a544fa17bed05106964469509d538f0465b8edec7eeb44d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 173,
+      "hasStructuralAnalysis": true
+    },
+    "docs/PLAN_ALPACA_VS_BITVAVO_VERGELIJKING.md": {
+      "filePath": "docs/PLAN_ALPACA_VS_BITVAVO_VERGELIJKING.md",
+      "contentHash": "1a9df95a1352cbbadf1b5c41d7f8f2b26cb9550509c8a6a903798037dcdb573b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 191,
+      "hasStructuralAnalysis": true
+    },
+    "docs/VERIFICATION_ALPACA_VS_BITVAVO.md": {
+      "filePath": "docs/VERIFICATION_ALPACA_VS_BITVAVO.md",
+      "contentHash": "be20ad7a8f6d9c272d829c0aa758a9308ac9d22f16da689ae22bbc5017ef6ebe",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 43,
+      "hasStructuralAnalysis": true
+    },
+    "kraken/__init__.py": {
+      "filePath": "kraken/__init__.py",
+      "contentHash": "b137b5f6f6b1fa418cb185d309d42dda7ededef0572105d7ea2b5c3ba2ed233c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "kraken/kraken_runtime.py": {
+      "filePath": "kraken/kraken_runtime.py",
+      "contentHash": "cdff2daf8776186331ea9109f871e7148fefa1958436c4386570bc9ef1cb440a",
+      "functions": [
+        {
+          "name": "_state_path",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_norm_symbol",
+          "params": [
+            "s"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_round_price",
+          "params": [
+            "price"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "make_exchange",
+          "params": [],
+          "returnType": "ccxt.kraken",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "filter_kraken_usd_pool",
+          "params": [
+            "exchange",
+            "pool"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "fetch_daily_rows_ccxt",
+          "params": [
+            "exchange",
+            "symbol",
+            "limit"
+          ],
+          "returnType": "list[dict[str, float]]",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "fetch_symbol_rows_for_pool",
+          "params": [
+            "exchange",
+            "pool"
+          ],
+          "returnType": "dict[str, list[dict[str, float]]]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_balance_entry",
+          "params": [
+            "balance",
+            "code"
+          ],
+          "returnType": "tuple[float, float]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_buying_power_usd",
+          "params": [
+            "exchange"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "estimate_portfolio_usd",
+          "params": [
+            "exchange",
+            "reference_symbols"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "get_qty_for_symbol",
+          "params": [
+            "exchange",
+            "symbol"
+          ],
+          "returnType": "tuple[float, float]",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "get_positions_map",
+          "params": [
+            "exchange",
+            "symbols",
+            "entries_state"
+          ],
+          "returnType": "dict[str, tuple[float, float]]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "fetch_open_orders",
+          "params": [
+            "exchange",
+            "symbol"
+          ],
+          "returnType": "list[dict[str, Any]]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "cancel_order_safe",
+          "params": [
+            "exchange",
+            "order_id",
+            "symbol"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_post_only_params",
+          "params": [],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "submit_limit_buy",
+          "params": [
+            "exchange",
+            "symbol",
+            "qty",
+            "price",
+            "dry_run"
+          ],
+          "returnType": "dict[str, Any] | None",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "submit_limit_sell_all_free",
+          "params": [
+            "exchange",
+            "symbol",
+            "price",
+            "dry_run"
+          ],
+          "returnType": "dict[str, Any] | None",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "order_age_hours",
+          "params": [
+            "order"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "get_mid_price",
+          "params": [
+            "exchange",
+            "symbol"
+          ],
+          "returnType": "float | None",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "_load_state",
+          "params": [],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "save_kraken_state",
+          "params": [
+            "entries",
+            "notified_trade_ids",
+            "cumulative_fictive_fees_usd"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_kraken_trade_log_path",
+          "params": [],
+          "returnType": "Path | None",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "append_kraken_fill_audit",
+          "params": [
+            "record"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "check_and_notify_kraken_fills",
+          "params": [
+            "exchange",
+            "symbols_pool",
+            "portfolio_usd"
+          ],
+          "returnType": "tuple[int, dict[str, Any]]",
+          "exported": true,
+          "lineCount": 163
+        },
+        {
+          "name": "persist_entries_from_balances",
+          "params": [
+            "exchange",
+            "symbols",
+            "entries_memory",
+            "mid_prices"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 21
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "decimal",
+          "specifiers": [
+            "Decimal"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": "ccxt",
+          "specifiers": [
+            "ccxt"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "ALPACA_FILLED_ORDERS_LOOKBACK_HOURS",
+            "BITVAVO_FEE_BUY_RATE",
+            "BITVAVO_FEE_SELL_LIMIT_RATE",
+            "JOURNAL_FIXED_FEE_PER_FILL_USD",
+            "TELEGRAM_NOTIFY_BUY_FILLS"
+          ]
+        },
+        {
+          "source": "bot_live.journal",
+          "specifiers": [
+            "known_order_ids",
+            "log_trade"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "notify_trade_filled"
+          ]
+        }
+      ],
+      "exports": [
+        "_state_path",
+        "_norm_symbol",
+        "_round_price",
+        "make_exchange",
+        "filter_kraken_usd_pool",
+        "fetch_daily_rows_ccxt",
+        "fetch_symbol_rows_for_pool",
+        "_balance_entry",
+        "get_buying_power_usd",
+        "estimate_portfolio_usd",
+        "get_qty_for_symbol",
+        "get_positions_map",
+        "fetch_open_orders",
+        "cancel_order_safe",
+        "_post_only_params",
+        "submit_limit_buy",
+        "submit_limit_sell_all_free",
+        "order_age_hours",
+        "get_mid_price",
+        "_load_state",
+        "save_kraken_state",
+        "_kraken_trade_log_path",
+        "append_kraken_fill_audit",
+        "check_and_notify_kraken_fills",
+        "persist_entries_from_balances"
+      ],
+      "totalLines": 510,
+      "hasStructuralAnalysis": true
+    },
+    "kraken/live_trader.py": {
+      "filePath": "kraken/live_trader.py",
+      "contentHash": "d830d100749a176b38e971eeb7564759e1bae91a838aae9a8bbea65409b6d4f2",
+      "functions": [
+        {
+          "name": "_prefer_kraken_telegram_env",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_dry_run",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_symbols_with_balance",
+          "params": [
+            "exchange",
+            "pool"
+          ],
+          "returnType": "set[str]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "select_top_symbols_kraken",
+          "params": [
+            "exchange",
+            "pool",
+            "n",
+            "ref_notional_usd"
+          ],
+          "returnType": "tuple[list[str], dict[str, tuple[float, float]]]",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "run_once",
+          "params": [],
+          "exported": true,
+          "lineCount": 380
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "decimal",
+          "specifiers": [
+            "Decimal"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "SYMBOL_POOL",
+            "SYMBOLS_ACTIVE",
+            "ALPACA_CRYPTO_MIN_ORDER_REF_USD",
+            "ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD",
+            "ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT",
+            "required_min_spread_fraction_crypto_usd",
+            "STOP_LOSS_PER_UNIT",
+            "ORDER_UPDATE_THRESHOLD",
+            "ORDER_MAX_AGE_HOURS",
+            "ORDER_STALE_PRICE_THRESHOLD",
+            "ORDER_REPLACE_DELAY_SEC"
+          ]
+        },
+        {
+          "source": "bot_live.telegram",
+          "specifiers": [
+            "send_telegram"
+          ]
+        },
+        {
+          "source": "bot_live.run_audit",
+          "specifiers": [
+            "KRAKEN_RUNS_JSONL",
+            "log_run_audit"
+          ]
+        },
+        {
+          "source": "alpaca_bot.strategy_core",
+          "specifiers": [
+            "build_levels_scored_from_symbol_rows",
+            "levels_passing_spread",
+            "select_top_symbols_from_scores"
+          ]
+        },
+        {
+          "source": "kraken.kraken_runtime",
+          "specifiers": [
+            "MIN_SELLABLE_CRYPTO_QTY",
+            "_norm_symbol",
+            "_round_price",
+            "cancel_order_safe",
+            "check_and_notify_kraken_fills",
+            "estimate_portfolio_usd",
+            "fetch_open_orders",
+            "fetch_symbol_rows_for_pool",
+            "filter_kraken_usd_pool",
+            "get_buying_power_usd",
+            "get_mid_price",
+            "get_positions_map",
+            "get_qty_for_symbol",
+            "make_exchange",
+            "order_age_hours",
+            "persist_entries_from_balances",
+            "save_kraken_state",
+            "submit_limit_buy",
+            "submit_limit_sell_all_free"
+          ]
+        }
+      ],
+      "exports": [
+        "_prefer_kraken_telegram_env",
+        "_dry_run",
+        "_symbols_with_balance",
+        "select_top_symbols_kraken",
+        "run_once",
+        "main"
+      ],
+      "totalLines": 542,
+      "hasStructuralAnalysis": true
+    },
+    "kraken/README.md": {
+      "filePath": "kraken/README.md",
+      "contentHash": "380f3ec30b1ab517d4d054dbe99c7277c1ef7b7d78ad68e9fb1e3270ba81691b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/__init__.py": {
+      "filePath": "metrics/__init__.py",
+      "contentHash": "ccfa7bb797c358067b5ea3f46ba680fe72026bcca7e0a8e0761cc401bb0028d7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/ALPACA_VS_KRAKEN.md": {
+      "filePath": "metrics/ALPACA_VS_KRAKEN.md",
+      "contentHash": "b9d6b1d2df3bdf9065ce92ee4e15718401c425e5910e4c53cee0bf424a5b0eb7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 127,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/bitvavo_compare/__init__.py": {
+      "filePath": "metrics/bitvavo_compare/__init__.py",
+      "contentHash": "3575f7baff0275ddef95be63d33a978d6b40a0ce0edc8d7f22fa8da0a670030a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/bitvavo_compare/__main__.py": {
+      "filePath": "metrics/bitvavo_compare/__main__.py",
+      "contentHash": "307299fda7b77d22c64cb51430ec75e5f59d78e9c948786afb3b2544fe45e4b7",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".cli",
+          "specifiers": [
+            "main"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/bitvavo_compare/cli.py": {
+      "filePath": "metrics/bitvavo_compare/cli.py",
+      "contentHash": "f0936cd1e5b322532cb565a370096d528013af266410962dda0379731d69a58f",
+      "functions": [
+        {
+          "name": "_repo_root",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "cmd_journal_export",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "cmd_metrics",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "build_parser",
+          "params": [],
+          "returnType": "argparse.ArgumentParser",
+          "exported": true,
+          "lineCount": 58
+        },
+        {
+          "name": "main",
+          "params": [
+            "argv"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": ".journal_normalize",
+          "specifiers": [
+            "merge_bitvavo_only",
+            "parse_range",
+            "write_csv"
+          ]
+        },
+        {
+          "source": ".metrics_summary",
+          "specifiers": [
+            "format_summary_md",
+            "load_rows",
+            "summarize_label"
+          ]
+        }
+      ],
+      "exports": [
+        "_repo_root",
+        "cmd_journal_export",
+        "cmd_metrics",
+        "build_parser",
+        "main"
+      ],
+      "totalLines": 123,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/bitvavo_compare/journal_normalize.py": {
+      "filePath": "metrics/bitvavo_compare/journal_normalize.py",
+      "contentHash": "849ef94c85037ebe721fbb22544eb7f956fc2da2becad1d37a8f149639584659",
+      "functions": [
+        {
+          "name": "parse_instant_utc",
+          "params": [
+            "s"
+          ],
+          "returnType": "datetime",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "parse_range",
+          "params": [
+            "start",
+            "end"
+          ],
+          "returnType": "tuple[datetime | None, datetime | None]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_classify_quote",
+          "params": [
+            "symbol"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "base_asset",
+          "params": [
+            "symbol"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "load_jsonl",
+          "params": [
+            "path"
+          ],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "row_to_normalized",
+          "params": [
+            "r",
+            "source_path"
+          ],
+          "returnType": "dict[str, object]",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "write_csv",
+          "params": [
+            "path",
+            "rows"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "merge_bitvavo_only",
+          "params": [
+            "repo_root",
+            "trades_path",
+            "bitvavo_extra_path",
+            "lo",
+            "hi"
+          ],
+          "returnType": "tuple[list[dict[str, object]], int]",
+          "exported": true,
+          "lineCount": 61
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "csv",
+          "specifiers": [
+            "csv"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "parse_instant_utc",
+        "parse_range",
+        "_classify_quote",
+        "base_asset",
+        "load_jsonl",
+        "row_to_normalized",
+        "write_csv",
+        "merge_bitvavo_only"
+      ],
+      "totalLines": 177,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/bitvavo_compare/metrics_summary.py": {
+      "filePath": "metrics/bitvavo_compare/metrics_summary.py",
+      "contentHash": "f15ee189225c1753d24f622b19602f8579fd3cc807ea62ddf10d22385c03281f",
+      "functions": [
+        {
+          "name": "load_rows",
+          "params": [
+            "path"
+          ],
+          "returnType": "list[dict[str, str]]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "summarize_label",
+          "params": [
+            "label",
+            "rows"
+          ],
+          "returnType": "dict[str, float | int | str]",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "format_summary_md",
+          "params": [
+            "tables"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 21
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "csv",
+          "specifiers": [
+            "csv"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "load_rows",
+        "summarize_label",
+        "format_summary_md"
+      ],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/bitvavo_compare/README.md": {
+      "filePath": "metrics/bitvavo_compare/README.md",
+      "contentHash": "2058ca92f10bba4f86b01851ee3b92f12036cc8cd7ee4d3af0cd3c8993335b60",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 49,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/export_all_trades.py": {
+      "filePath": "metrics/export_all_trades.py",
+      "contentHash": "8a516ee02c2132a3fb0a145309237a28ceef627bcb242dd4ab785598e3b114a4",
+      "functions": [
+        {
+          "name": "_load_jsonl",
+          "params": [
+            "path"
+          ],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 28
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "csv",
+          "specifiers": [
+            "csv"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "_load_jsonl",
+        "main"
+      ],
+      "totalLines": 85,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/export_bitvavo_trades.py": {
+      "filePath": "metrics/export_bitvavo_trades.py",
+      "contentHash": "7b4aee61ce72fe9986f32fada6d3447b965703c5252993c03bc0db357cf2095b",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 68
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": ".bitvavo_compare.journal_normalize",
+          "specifiers": [
+            "merge_bitvavo_only",
+            "write_csv"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 107,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/output/.gitkeep": {
+      "filePath": "metrics/output/.gitkeep",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": false
+    },
+    "metrics/README.md": {
+      "filePath": "metrics/README.md",
+      "contentHash": "927a05b5e3bb373244107ba28e3d216de387babb175a85f91f232bd92fe52f07",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 57,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/run_compare/__init__.py": {
+      "filePath": "metrics/run_compare/__init__.py",
+      "contentHash": "45ee2156bca02b9301ce8a3d1e576ac7c9fed2521c479d74c7ab320d7327e971",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/run_compare/__main__.py": {
+      "filePath": "metrics/run_compare/__main__.py",
+      "contentHash": "147fa97c3a88c2352de0a12207b22388dbf28b8c812d0962d6eac8a9b09c84a1",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".cli",
+          "specifiers": [
+            "main"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/run_compare/cli.py": {
+      "filePath": "metrics/run_compare/cli.py",
+      "contentHash": "49154dd4711a90ed16ac113e43f7e6710eb95e532255da1ac65e8655797c7ff9",
+      "functions": [
+        {
+          "name": "_parse_utc_date",
+          "params": [
+            "s"
+          ],
+          "returnType": "datetime",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "main",
+          "params": [
+            "argv"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 91
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": ".load_export",
+          "specifiers": [
+            "build_report",
+            "filter_by_window",
+            "load_jsonl",
+            "repo_root_from_here",
+            "write_outputs"
+          ]
+        }
+      ],
+      "exports": [
+        "_parse_utc_date",
+        "main"
+      ],
+      "totalLines": 119,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/run_compare/load_export.py": {
+      "filePath": "metrics/run_compare/load_export.py",
+      "contentHash": "e58c37eb4ad778958cfc658be0512236d95be177a79756ef6fd60ab74d9148c4",
+      "functions": [
+        {
+          "name": "repo_root_from_here",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "load_jsonl",
+          "params": [
+            "path"
+          ],
+          "returnType": "list[dict[str, Any]]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "parse_row_ts",
+          "params": [
+            "row"
+          ],
+          "returnType": "datetime | None",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "filter_by_window",
+          "params": [
+            "rows",
+            "start",
+            "end"
+          ],
+          "returnType": "list[dict[str, Any]]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_statsrollup",
+          "params": [
+            "rows"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "build_report",
+          "params": [
+            "alpaca_rows",
+            "bitvavo_rows",
+            "start",
+            "end"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "format_markdown",
+          "params": [
+            "report"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 64
+        },
+        {
+          "name": "write_outputs",
+          "params": [
+            "report",
+            "out_dir"
+          ],
+          "returnType": "tuple[Path, Path]",
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "Counter"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "repo_root_from_here",
+        "load_jsonl",
+        "parse_row_ts",
+        "filter_by_window",
+        "_statsrollup",
+        "build_report",
+        "format_markdown",
+        "write_outputs"
+      ],
+      "totalLines": 204,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/sample_all_trades.csv": {
+      "filePath": "metrics/sample_all_trades.csv",
+      "contentHash": "11134db47ac2709e5660b2f425a5cc32560647bef6eaedda3d8199a2eaa46425",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 6,
+      "hasStructuralAnalysis": false
+    },
+    "metrics/sample_all_trades.json": {
+      "filePath": "metrics/sample_all_trades.json",
+      "contentHash": "4e3ad95fb94be215850a9450e5e49d30298bde76e545cbd24be9a27c7b2ea205",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/STRATEGIE_EN_TRADES.md": {
+      "filePath": "metrics/STRATEGIE_EN_TRADES.md",
+      "contentHash": "5b230a5dbfeccd0b29fce71decd32c640c4d18e5733a2bc559fd6dcfdb8691f8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 109,
+      "hasStructuralAnalysis": true
+    },
+    "metrics/VERGELIJK_ALPACA_BITVAVO.md": {
+      "filePath": "metrics/VERGELIJK_ALPACA_BITVAVO.md",
+      "contentHash": "c37941b7a6916221a2d56decb0b8bc25a1dcf966add5f6cdbba1cdbd41e28b0e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 104,
+      "hasStructuralAnalysis": true
+    },
+    "pytest.ini": {
+      "filePath": "pytest.ini",
+      "contentHash": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": false
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "99f3e2ae9bdd87b4be142ad05fdd46dd42dfdcaf82260eebd1555d951bd16457",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "SETUP_GUIDE.md": {
+      "filePath": "SETUP_GUIDE.md",
+      "contentHash": "4e93ba67861fb54ef9ced3b65b8c609126e7baf1f074bf55775766ccad507c59",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 150,
+      "hasStructuralAnalysis": true
+    },
+    "tests/__init__.py": {
+      "filePath": "tests/__init__.py",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_journal_dedupe.py": {
+      "filePath": "tests/test_journal_dedupe.py",
+      "contentHash": "b18b4018577bed787d30b96e96b87cbca9824fb63f633b9cdd9af60b29c0ad0f",
+      "functions": [
+        {
+          "name": "test_known_order_ids_reads_journal",
+          "params": [
+            "tmp_path",
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 30
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "bot_live.journal",
+          "specifiers": [
+            "known_order_ids",
+            "log_trade"
+          ]
+        }
+      ],
+      "exports": [
+        "test_known_order_ids_reads_journal"
+      ],
+      "totalLines": 40,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_strategy_core.py": {
+      "filePath": "tests/test_strategy_core.py",
+      "contentHash": "4ca29fb372b7e1e1f3cfadc14a3742bc49cb4c01af61576b1b3948f85860e3cd",
+      "functions": [
+        {
+          "name": "_flat_daily",
+          "params": [
+            "low",
+            "high",
+            "n"
+          ],
+          "returnType": "list[dict[str, float]]",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_levels_score_returns_none_when_insufficient_rows",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_levels_score_flat_three_day_band",
+          "params": [],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_levels_passing_spread_none_when_min_spread_too_large",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_levels_passing_spread_returns_tuple_when_spread_ok",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_build_levels_scored_skips_missing_and_short_series",
+          "params": [],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_select_top_symbols_keeps_positions_and_respects_cap_n",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "bot_live.config",
+          "specifiers": [
+            "LEVELS_LOOKBACK_DAYS"
+          ]
+        },
+        {
+          "source": "alpaca_bot.strategy_core",
+          "specifiers": [
+            "build_levels_scored_from_symbol_rows",
+            "levels_passing_spread",
+            "levels_score_from_daily_rows",
+            "select_top_symbols_from_scores"
+          ]
+        }
+      ],
+      "exports": [
+        "_flat_daily",
+        "test_levels_score_returns_none_when_insufficient_rows",
+        "test_levels_score_flat_three_day_band",
+        "test_levels_passing_spread_none_when_min_spread_too_large",
+        "test_levels_passing_spread_returns_tuple_when_spread_ok",
+        "test_build_levels_scored_skips_missing_and_short_series",
+        "test_select_top_symbols_keeps_positions_and_respects_cap_n"
+      ],
+      "totalLines": 72,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

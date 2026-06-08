@@ -1,0 +1,53 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+# Lines below are suggestions — uncomment to activate.
+# Use ! prefix to force-include something excluded by defaults.
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, dist/, build/, obj/, *.lock, *.min.js, etc.
+#
+# --- From .gitignore (uncomment to exclude) ---
+
+# .DS_Store
+# .env
+# .cursor/mcp.json
+# .alpaca_trade_state.json
+# .alpaca_hybrid_state.json
+# .alpaca_day_state.json
+# .bitvavo_trade_state.json
+# .bitvavo_day_state.json
+# .kraken_trade_state.json
+# trades.jsonl
+# alpaca_bot_trades.jsonl
+# alpaca_runs.jsonl
+# bitvavo_trades.jsonl
+# bitvavo_runs.jsonl
+# kraken_trades.jsonl
+# kraken_runs.jsonl
+# kraken_bot_trades.jsonl
+# *.pyc
+# .pytest_cache
+# alpaca-server/
+# Volledige geschiedenis.csv
+# .Rhistory
+# ai.symlink.bak
+# exports/alpaca_range_bot_v1_handoff_*.json
+# exports/alpaca_range_bot_v1_handoff_*.md
+# metrics/output/*
+# !metrics/output/.gitkeep
+# metrics/alpaca_range_bot_v1_handoff_*.json
+# metrics/alpaca_range_bot_v1_handoff_*.md
+# metrics/alpaca_filled_orders_*.csv
+# metrics/alpaca_filled_orders_*.json
+# metrics/alpaca_filled_orders_*_summary.md
+
+# --- Detected directories (uncomment to exclude) ---
+
+# tests/
+# docs/
+
+# --- Test file patterns (uncomment to exclude) ---
+
+# *.test.*
+# *.spec.*
+# *.snap
