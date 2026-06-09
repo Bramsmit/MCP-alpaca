@@ -145,3 +145,65 @@ RISK_PER_TRADE_PCT = 0.01           # 1% van equity per trade
 import os as _os
 DRY_RUN = _os.environ.get("DRY_RUN", "false").strip().lower() in ("1", "true", "yes", "on")
 
+# ---------------------------------------------------------------------------
+# Safety guardrails voor de Alpaca range-bot (paper 1000 eu)
+# ---------------------------------------------------------------------------
+
+SAFETY_ENABLED = _os.environ.get("SAFETY_ENABLED", "true").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+SAFETY_DRY_RUN = _os.environ.get("SAFETY_DRY_RUN", "false").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+SAFETY_STATE_FILE = _os.environ.get("SAFETY_STATE_FILE", ".alpaca_safety_state.json")
+
+# Portfolio circuit breaker. Bij pause worden open buy orders geannuleerd en
+# nieuwe buys tijdelijk geblokkeerd. Liquidate triggert alleen exits die ook
+# hun software-stop raken; geen blinde alles-verkoop.
+SAFETY_PEAK_DRAWDOWN_PAUSE_PCT = float(
+    _os.environ.get("SAFETY_PEAK_DRAWDOWN_PAUSE_PCT", "0.05")
+)
+SAFETY_PEAK_DRAWDOWN_LIQUIDATE_PCT = float(
+    _os.environ.get("SAFETY_PEAK_DRAWDOWN_LIQUIDATE_PCT", "0.08")
+)
+SAFETY_COOLDOWN_HOURS = int(_os.environ.get("SAFETY_COOLDOWN_HOURS", "72"))
+SAFETY_SYMBOL_COOLDOWN_HOURS = int(
+    _os.environ.get("SAFETY_SYMBOL_COOLDOWN_HOURS", "168")
+)
+
+# Software-stop: per run gecontroleerd. Alpaca crypto ondersteunt geen
+# bracket/OCO naast de take-profit limit, dus stop-exits zijn cancel+sell.
+SAFETY_STOP_MIN_PCT = float(_os.environ.get("SAFETY_STOP_MIN_PCT", "0.06"))
+SAFETY_STOP_MAX_PCT = float(_os.environ.get("SAFETY_STOP_MAX_PCT", "0.10"))
+SAFETY_STOP_ATR_MULT = float(_os.environ.get("SAFETY_STOP_ATR_MULT", "2.0"))
+SAFETY_AGGRESSIVE_SELL_DISCOUNT_PCT = float(
+    _os.environ.get("SAFETY_AGGRESSIVE_SELL_DISCOUNT_PCT", "0.003")
+)
+
+# Entry gates: voorkom dip-buying in duidelijke neertrend.
+SAFETY_SYMBOL_EMA_GATE = _os.environ.get(
+    "SAFETY_SYMBOL_EMA_GATE", "true"
+).strip().lower() in ("1", "true", "yes", "on")
+SAFETY_MARKET_GATE = _os.environ.get("SAFETY_MARKET_GATE", "true").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+SAFETY_MARKET_DROP_7D_PCT = float(
+    _os.environ.get("SAFETY_MARKET_DROP_7D_PCT", "0.05")
+)
+SAFETY_EMA_FAST_DAYS = int(_os.environ.get("SAFETY_EMA_FAST_DAYS", "20"))
+SAFETY_EMA_SLOW_DAYS = int(_os.environ.get("SAFETY_EMA_SLOW_DAYS", "50"))
+
+# Risk-based notional cap voor nieuwe buys.
+SAFETY_MAX_ALLOC_PCT = float(_os.environ.get("SAFETY_MAX_ALLOC_PCT", "0.20"))
+SAFETY_RISK_PER_TRADE_PCT = float(
+    _os.environ.get("SAFETY_RISK_PER_TRADE_PCT", "0.01")
+)

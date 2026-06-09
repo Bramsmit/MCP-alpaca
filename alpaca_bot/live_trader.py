@@ -69,6 +69,7 @@ from bot_live.alpaca_runtime import (
     MIN_SELLABLE_CRYPTO_QTY,
 )
 from bot_live.run_audit import ALPACA_RUNS_JSONL, log_run_audit
+from bot_live.safety import apply_safety_guardrails
 from alpaca_bot.strategy_core import (
     build_levels_scored_from_symbol_rows,
     levels_passing_spread,
@@ -182,6 +183,13 @@ def run_once():
     trading_client, data_client = get_trading_clients()
 
     buying_power_pre = get_buying_power(trading_client)
+    portfolio_pre = get_portfolio_value(trading_client)
+    safety = apply_safety_guardrails(
+        trading_client,
+        data_client,
+        portfolio_equity=portfolio_pre,
+        symbols=SYMBOL_POOL,
+    )
     cap_target = (buying_power_pre / SYMBOLS_ACTIVE) * 0.995
     est_order_usd = min(cap_target, max(0.0, buying_power_pre * 0.99))
     ref_usd = (
@@ -227,6 +235,17 @@ def run_once():
     log.info("Levels: %s", levels)
     log.info("Current prices: %s", current_prices)
     log.info("Positions: %s", positions)
+    log.info(
+        "Safety: dd=%.1f%% | peak=$%.2f | buys=%s | reason=%s",
+        safety.drawdown_pct,
+        safety.peak_equity,
+        "paused" if safety.block_new_buys else "allowed",
+        safety.reason or "-",
+    )
+    if safety.blocked_symbols:
+        log.info("Safety blocked: %s", safety.blocked_symbols)
+    if safety.actions:
+        log.info("Safety actions: %s", safety.actions)
     log.info("")
 
     for symbol in symbols:
@@ -236,6 +255,14 @@ def run_once():
         pos_data = positions.get(symbol, (0, 0))
         pos_qty, avg_entry = pos_data
         open_orders = get_open_orders(trading_client, symbol)
+
+        if symbol in safety.exit_symbols:
+            log.info(
+                "  %s: Safety stop-exit actief; range-orderbeheer deze run overgeslagen",
+                symbol,
+            )
+            stats["skipped"] += 1
+            continue
 
         if pos_qty <= 0:
             for o in open_orders:
@@ -447,11 +474,21 @@ def run_once():
                         log.warning("  %s: Fout: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout orders: {e}")
         else:
-            if capital_per < 10:
+            if not safety.allow_buy(symbol):
+                reason = (
+                    "portfolio risk-off"
+                    if safety.block_new_buys
+                    else safety.blocked_symbols.get(symbol, "safety gate")
+                )
+                log.info("  %s: Buy overgeslagen door safety (%s)", symbol, reason)
+                stats["skipped"] += 1
+                continue
+            capital_for_symbol = safety.buy_cap(symbol, portfolio_pre, capital_per)
+            if capital_for_symbol < 10:
                 log.info(
                     "  %s: Te weinig kapitaal ($%.2f, min $10), skip",
                     symbol,
-                    capital_per,
+                    capital_for_symbol,
                 )
                 stats["skipped"] += 1
             elif buy_level < 0.0001:
@@ -550,10 +587,10 @@ def run_once():
                     spread_frac = (
                         (sell_level - buy_level) / buy_level if buy_level > 0 else 0
                     )
-                    gross_usd_est = capital_per * spread_frac
+                    gross_usd_est = capital_for_symbol * spread_frac
                     fee_usd_est = (
                         ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD
-                        + capital_per * ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT
+                        + capital_for_symbol * ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT
                     )
                     if gross_usd_est < fee_usd_est:
                         log.warning(
@@ -562,11 +599,11 @@ def run_once():
                             symbol,
                             gross_usd_est,
                             fee_usd_est,
-                            capital_per,
+                            capital_for_symbol,
                         )
                         stats["skipped"] += 1
                         continue
-                    qty = capital_per / buy_level
+                    qty = capital_for_symbol / buy_level
                     limit_px = _round_price(buy_level)
                     try:
                         trading_client.submit_order(
@@ -585,11 +622,11 @@ def run_once():
                             else f"${buy_level:.4f}"
                         )
                         log.info(
-                            "  %s: Limit buy @ %s ($%.0f)", symbol, price_str, capital_per
+                            "  %s: Limit buy @ %s ($%.0f)", symbol, price_str, capital_for_symbol
                         )
                         if not existing_buy:
                             send_telegram(
-                                f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_per:.0f}) geplaatst"
+                                f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_for_symbol:.0f}) geplaatst"
                             )
                             stats["placed"] += 1
                     except Exception as e:
@@ -613,6 +650,10 @@ def run_once():
         f"Run: {stats['placed']} geplaatst, {stats['updated']} bijgewerkt, "
         f"{stats['unchanged']} ongewijzigd, {stats['skipped']} overgeslagen | {trade_status}"
     )
+    if safety.block_new_buys:
+        summary += f"\nSafety: nieuwe buys gepauzeerd ({safety.reason})"
+    elif safety.blocked_symbols:
+        summary += f"\nSafety: {len(safety.blocked_symbols)} symbol(s) geblokkeerd; overige buys toegestaan"
     if symbols:
         summary += f"\nActief: {', '.join(symbols)}"
     log.info(summary)
@@ -642,6 +683,14 @@ def run_once():
             "mid_prices": {k: round(float(v), 8) for k, v in current_prices.items()},
             "positions": pos_snap,
             "stats": dict(stats),
+            "safety": {
+                "drawdown_pct": round(float(safety.drawdown_pct), 4),
+                "peak_equity": round(float(safety.peak_equity), 2),
+                "block_new_buys": bool(safety.block_new_buys),
+                "reason": safety.reason,
+                "blocked_symbols": dict(safety.blocked_symbols),
+                "actions": list(safety.actions),
+            },
             "ref_notional_usd": round(float(ref_usd), 4),
             "buying_power_usd": round(buying_final, 4),
             "capital_per_usd": round(float(capital_per), 4),

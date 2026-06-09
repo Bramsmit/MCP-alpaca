@@ -14,6 +14,7 @@ from bot_live.alpaca_runtime import (
     get_cumulative_fictive_fees_usd,
 )
 from bot_live.telegram import send_telegram
+from bot_live.safety import format_safety_status
 
 _DAY_STATE_PATH = Path(__file__).resolve().parent.parent / ".alpaca_day_state.json"
 
@@ -65,6 +66,7 @@ def send_daily_report(trading_client=None) -> None:
         f"\n\n💸 Fictieve transactiekosten (cumulatief, model Bitvavo-stijl): "
         f"${cum_fees:.2f}"
     )
+    msg += format_safety_status(value)
 
     send_telegram(msg)
     save_day_start(value)

@@ -8,6 +8,7 @@ dist
 .alpaca_trade_state.json
 .alpaca_hybrid_state.json
 .alpaca_day_state.json
+.alpaca_safety_state.json
 .bitvavo_trade_state.json
 .bitvavo_day_state.json
 .kraken_trade_state.json
