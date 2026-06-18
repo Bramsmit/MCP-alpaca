@@ -167,14 +167,14 @@ SAFETY_STATE_FILE = _os.environ.get("SAFETY_STATE_FILE", ".alpaca_safety_state.j
 # nieuwe buys tijdelijk geblokkeerd. Liquidate triggert alleen exits die ook
 # hun software-stop raken; geen blinde alles-verkoop.
 SAFETY_PEAK_DRAWDOWN_PAUSE_PCT = float(
-    _os.environ.get("SAFETY_PEAK_DRAWDOWN_PAUSE_PCT", "0.05")
+    _os.environ.get("SAFETY_PEAK_DRAWDOWN_PAUSE_PCT", "0.20")
 )
 SAFETY_PEAK_DRAWDOWN_LIQUIDATE_PCT = float(
     _os.environ.get("SAFETY_PEAK_DRAWDOWN_LIQUIDATE_PCT", "0.08")
 )
-SAFETY_COOLDOWN_HOURS = int(_os.environ.get("SAFETY_COOLDOWN_HOURS", "72"))
+SAFETY_COOLDOWN_HOURS = int(_os.environ.get("SAFETY_COOLDOWN_HOURS", "6"))
 SAFETY_SYMBOL_COOLDOWN_HOURS = int(
-    _os.environ.get("SAFETY_SYMBOL_COOLDOWN_HOURS", "168")
+    _os.environ.get("SAFETY_SYMBOL_COOLDOWN_HOURS", "24")
 )
 
 # Software-stop: per run gecontroleerd. Alpaca crypto ondersteunt geen
@@ -188,9 +188,11 @@ SAFETY_AGGRESSIVE_SELL_DISCOUNT_PCT = float(
 
 # Entry gates: voorkom dip-buying in duidelijke neertrend.
 SAFETY_SYMBOL_EMA_GATE = _os.environ.get(
-    "SAFETY_SYMBOL_EMA_GATE", "true"
+    "SAFETY_SYMBOL_EMA_GATE", "false"
 ).strip().lower() in ("1", "true", "yes", "on")
-SAFETY_MARKET_GATE = _os.environ.get("SAFETY_MARKET_GATE", "true").strip().lower() in (
+SAFETY_MARKET_GATE = _os.environ.get(
+    "SAFETY_MARKET_GATE", "false"
+).strip().lower() in (
     "1",
     "true",
     "yes",

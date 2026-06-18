@@ -8,6 +8,14 @@ import pandas as pd
 from bot_live import safety
 
 
+def test_default_safety_settings_are_relaxed_enough_to_resume_trading():
+    assert safety.SAFETY_PEAK_DRAWDOWN_PAUSE_PCT == 0.20
+    assert safety.SAFETY_COOLDOWN_HOURS == 6
+    assert safety.SAFETY_SYMBOL_COOLDOWN_HOURS == 24
+    assert safety.SAFETY_MARKET_GATE is False
+    assert safety.SAFETY_SYMBOL_EMA_GATE is False
+
+
 def _daily_from_closes(closes: list[float]) -> pd.DataFrame:
     idx = pd.date_range("2026-01-01", periods=len(closes), freq="D", tz="UTC")
     close = pd.Series(closes, index=idx, dtype=float)
@@ -32,7 +40,8 @@ def test_stop_distance_is_bounded_by_maximum():
     assert safety.stop_distance_fraction(df, 100.0) == safety.SAFETY_STOP_MAX_PCT
 
 
-def test_symbol_gate_blocks_clear_downtrend():
+def test_symbol_gate_blocks_clear_downtrend(monkeypatch):
+    monkeypatch.setattr(safety, "SAFETY_SYMBOL_EMA_GATE", True)
     closes = list(range(120, 60, -1))
     ok, reason = safety._symbol_gate("TEST/USD", _daily_from_closes(closes))
 
@@ -40,7 +49,8 @@ def test_symbol_gate_blocks_clear_downtrend():
     assert "downtrend" in reason
 
 
-def test_symbol_gate_allows_uptrend():
+def test_symbol_gate_allows_uptrend(monkeypatch):
+    monkeypatch.setattr(safety, "SAFETY_SYMBOL_EMA_GATE", True)
     closes = list(range(60, 120))
     ok, _reason = safety._symbol_gate("TEST/USD", _daily_from_closes(closes))
 
@@ -106,6 +116,9 @@ def test_apply_safety_guardrails_pauses_buys_from_historical_drawdown(
     monkeypatch,
     tmp_path,
 ):
+    monkeypatch.setattr(safety, "SAFETY_PEAK_DRAWDOWN_PAUSE_PCT", 0.05)
+    monkeypatch.setattr(safety, "SAFETY_COOLDOWN_HOURS", 72)
+
     class Order:
         id = "bch-buy"
         symbol = "BCHUSD"
