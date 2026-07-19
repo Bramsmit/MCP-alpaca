@@ -349,3 +349,4 @@ timestamp,order_id,symbol,side,qty,price,entry_price,notional_usd,profit_usd,pro
 2026-07-19T05:52:16.268446+00:00,8466e39f-3c8c-4bdb-b2fd-ccc1a40a9c2a,UNI/USD,sell,37.464182305,3.5514,2.5014,133.0503,38.4972,40.91,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-07-19T05:52:16.720061+00:00,df1c22eb-4be3-4bb3-ba48-cfc9ba6b435d,CRV/USD,sell,1030.485584547,0.213713,,220.2282,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-07-19T08:16:45.735001+00:00,a7702bea-fa81-4056-9300-af7e05d21ef5,UNI/USD,buy,37.933854,3.4909,,132.4233,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-07-19T10:27:36.052916+00:00,96778677-42a7-4cd5-ab1f-561c6ab4e65c,UNI/USD,sell,37.876953219,3.5528,2.5014,134.5692,38.9799,40.97,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
