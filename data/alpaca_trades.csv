@@ -459,3 +459,4 @@ timestamp,order_id,symbol,side,qty,price,entry_price,notional_usd,profit_usd,pro
 2026-08-06T10:37:53.649883+00:00,69aef6fa-b1b4-4952-b4f7-3b0de053111b,DOT/USD,buy,242.554528,0.820188,,198.9403,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-08-06T15:13:15.291994+00:00,d49d66de-d0f0-45fb-a334-6e9b8a77ac40,ADA/USD,sell,138.389148656,0.193988,0.188337,26.8458,0.2027,0.77,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-08-06T23:57:34.845453+00:00,d67e56cc-5f86-4a6c-8fda-ed50ef8fa0f7,ADA/USD,sell,1104.533590455,0.2016,,222.674,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-08-07T04:54:04.075506+00:00,6856d770-7d87-4562-a103-30e3e1cfee81,UNI/USD,buy,35.976974,3.9499,,142.1054,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
