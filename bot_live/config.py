@@ -12,6 +12,22 @@ SYMBOL_POOL = [
 # Hoeveel symbolen actief getrade worden (geselecteerd op winstgevendheid)
 SYMBOLS_ACTIVE = 3
 
+# Alpaca range-bot draait op meer parallelle symbolen dan hybrid/Kraken: het
+# risico per trade blijft 1% van de equity (safety.buy_cap), maar er staan meer
+# limietorders in de markt, dus vaker een fill en minder cash die stilstaat.
+import os as _os_range
+
+ALPACA_RANGE_SYMBOLS_ACTIVE = int(
+    _os_range.environ.get("ALPACA_RANGE_SYMBOLS_ACTIVE", "5")
+)
+
+# Plafond op de totale blootstelling. SAFETY_MAX_ALLOC_PCT begrenst alleen per
+# symbool (20%), dus zonder deze grens kan de bot met meer parallelle symbolen
+# volledig belegd raken.
+ALPACA_RANGE_MAX_DEPLOYED_PCT = float(
+    _os_range.environ.get("ALPACA_RANGE_MAX_DEPLOYED_PCT", "0.60")
+)
+
 # Voor backtest: eerste N uit pool (zelfde subset als live)
 SYMBOLS = SYMBOL_POOL[:SYMBOLS_ACTIVE]
 
@@ -42,6 +58,10 @@ ALPACA_CRYPTO_MIN_ORDER_REF_USD = 5.0
 ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD = 0.25
 ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD = ALPACA_CRYPTO_FEE_FIXED_PER_SIDE_USD * 2
 ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT = BITVAVO_MAKER_FEE_RATE * 2
+# Onder dit bedrag eet de vaste round-trip-fee meer op dan de minimale spread die
+# de bot eist: zulke restposities krijgen geen exit-order en bezetten geen
+# kapitaalslot, maar mogen wel weer aangevuld worden tot een volwaardige positie.
+ALPACA_MIN_POSITION_NOTIONAL_USD = ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD / MIN_SPREAD_PCT
 # Journal/fills: uren terug naar closed orders (≥ interval Actions + marge).
 ALPACA_FILLED_ORDERS_LOOKBACK_HOURS = 72
 

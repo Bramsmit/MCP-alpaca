@@ -39,9 +39,11 @@ from alpaca.data.timeframe import TimeFrame
 
 from bot_live.config import (
     SYMBOL_POOL,
-    SYMBOLS_ACTIVE,
+    ALPACA_RANGE_SYMBOLS_ACTIVE,
     LEVELS_LOOKBACK_DAYS,
+    ALPACA_RANGE_MAX_DEPLOYED_PCT,
     ALPACA_CRYPTO_MIN_ORDER_REF_USD,
+    ALPACA_MIN_POSITION_NOTIONAL_USD,
     ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
     ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT,
     required_min_spread_fraction_crypto_usd,
@@ -139,6 +141,20 @@ def _get_levels_and_scores(
     return build_levels_scored_from_symbol_rows(rows_map, symbols, min_spread_frac)
 
 
+def is_tradable_position(qty: float, ref_price: float) -> bool:
+    """
+    Telt deze positie mee als 'echte' positie?
+
+    Restjes van een paar cent halen de qty-drempel wel (0,0001 munt is bij een
+    dure coin nog geld, bij een goedkope niets), maar zijn economisch waardeloos:
+    de vaste round-trip-fee overstijgt de opbrengst. Zulke restjes mogen geen
+    exit-order krijgen en geen kapitaalslot bezetten.
+    """
+    if qty <= 0 or Decimal(str(qty)) < MIN_SELLABLE_CRYPTO_QTY:
+        return False
+    return qty * float(ref_price or 0) >= ALPACA_MIN_POSITION_NOTIONAL_USD
+
+
 def select_top_symbols(
     data_client: CryptoHistoricalDataClient,
     trading_client,
@@ -153,7 +169,11 @@ def select_top_symbols(
     min_spread_frac = required_min_spread_fraction_crypto_usd(ref_notional_usd)
     levels_scored = _get_levels_and_scores(data_client, pool, min_spread_frac)
     positions = get_positions(trading_client, symbols=pool)
-    symbols_with_positions = set(positions.keys())
+    symbols_with_positions = {
+        sym
+        for sym, (qty, avg_entry) in positions.items()
+        if is_tradable_position(qty, avg_entry)
+    }
 
     selected, levels = select_top_symbols_from_scores(
         levels_scored, symbols_with_positions, n
@@ -190,7 +210,7 @@ def run_once():
         portfolio_equity=portfolio_pre,
         symbols=SYMBOL_POOL,
     )
-    cap_target = (buying_power_pre / SYMBOLS_ACTIVE) * 0.995
+    cap_target = (buying_power_pre / ALPACA_RANGE_SYMBOLS_ACTIVE) * 0.995
     est_order_usd = min(cap_target, max(0.0, buying_power_pre * 0.99))
     ref_usd = (
         max(ALPACA_CRYPTO_MIN_ORDER_REF_USD, est_order_usd)
@@ -199,7 +219,7 @@ def run_once():
     )
 
     symbols, levels = select_top_symbols(
-        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE, ref_usd
+        data_client, trading_client, SYMBOL_POOL, ALPACA_RANGE_SYMBOLS_ACTIVE, ref_usd
     )
     if not symbols:
         log.warning("Geen symbolen geselecteerd uit pool")
@@ -220,7 +240,18 @@ def run_once():
     positions = get_positions(trading_client, symbols=symbols)
     buying_power = get_buying_power(trading_client)
 
-    capital_per = buying_power / len(symbols)
+    # Alleen symbolen zonder lopende positie kunnen dit uur nog kopen; delen door
+    # alle geselecteerde symbolen verschraalt elke order zodra er posities open staan.
+    buy_slots = sum(
+        1
+        for sym in symbols
+        if not is_tradable_position(*positions.get(sym, (0.0, 0.0)))
+    )
+    deployed = max(0.0, portfolio_pre - buying_power)
+    deploy_room = max(
+        0.0, portfolio_pre * ALPACA_RANGE_MAX_DEPLOYED_PCT - deployed
+    )
+    capital_per = min(buying_power, deploy_room) / max(1, buy_slots)
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
@@ -231,7 +262,17 @@ def run_once():
         required_min_spread_fraction_crypto_usd(ref_usd) * 100,
         ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
     )
-    log.info("Buying power: $%.2f | Per asset: $%.2f", buying_power, capital_per)
+    log.info(
+        "Buying power: $%.2f | Ingezet: $%.2f (%.0f%%, max %.0f%%) | "
+        "Koopslots: %d van %d | Per asset: $%.2f",
+        buying_power,
+        deployed,
+        (deployed / portfolio_pre * 100) if portfolio_pre else 0.0,
+        ALPACA_RANGE_MAX_DEPLOYED_PCT * 100,
+        buy_slots,
+        len(symbols),
+        capital_per,
+    )
     log.info("Levels: %s", levels)
     log.info("Current prices: %s", current_prices)
     log.info("Positions: %s", positions)
@@ -273,21 +314,24 @@ def run_once():
                     except Exception:
                         pass
 
-        if pos_qty > 0 and Decimal(str(pos_qty)) < MIN_SELLABLE_CRYPTO_QTY:
+        has_position = is_tradable_position(pos_qty, avg_entry)
+
+        if pos_qty > 0 and not has_position:
             for o in open_orders:
                 if o.side == OrderSide.SELL:
                     try:
                         trading_client.cancel_order_by_id(o.id)
                         log.info(
-                            "  %s: Dust positie (qty=%s), sell order geannuleerd",
+                            "  %s: Restpositie onder $%.2f (qty=%s), sell order geannuleerd",
                             symbol,
+                            ALPACA_MIN_POSITION_NOTIONAL_USD,
                             pos_qty,
                         )
                     except Exception:
                         pass
-            continue
+            open_orders = [o for o in open_orders if o.side != OrderSide.SELL]
 
-        if pos_qty > 0:
+        if has_position:
             existing_sell = next(
                 (
                     o
@@ -694,6 +738,9 @@ def run_once():
             "ref_notional_usd": round(float(ref_usd), 4),
             "buying_power_usd": round(buying_final, 4),
             "capital_per_usd": round(float(capital_per), 4),
+            "buy_slots": buy_slots,
+            "deployed_usd": round(float(deployed), 2),
+            "deployed_pct": round(deployed / portfolio_pre, 4) if portfolio_pre else 0.0,
             "portfolio_value_usd": round(portfolio_usd, 2),
             "summary_text": summary,
         },
@@ -708,7 +755,11 @@ def main():
     log.info("=" * 50)
     log.info("MCP-Alpaca Live Paper Trader (alpaca_bot/)")
     log.info("=" * 50)
-    log.info("Pool: %s (top %d actief)", ", ".join(SYMBOL_POOL), SYMBOLS_ACTIVE)
+    log.info(
+        "Pool: %s (top %d actief)",
+        ", ".join(SYMBOL_POOL),
+        ALPACA_RANGE_SYMBOLS_ACTIVE,
+    )
     log.info("Run op: %s", datetime.now().isoformat())
     log.info("")
 

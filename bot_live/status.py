@@ -32,7 +32,7 @@ from bot_live.alpaca_runtime import (
 from bot_range_1000.live_trader import select_top_symbols
 from bot_live.config import (
     SYMBOL_POOL,
-    SYMBOLS_ACTIVE,
+    ALPACA_RANGE_SYMBOLS_ACTIVE,
     ALPACA_CRYPTO_MIN_ORDER_REF_USD,
 )
 
@@ -44,12 +44,12 @@ def main():
 
     trading_client, data_client = get_trading_clients()
     cash_pre = get_buying_power(trading_client)
-    cap_target = (cash_pre / SYMBOLS_ACTIVE) * 0.995
+    cap_target = (cash_pre / ALPACA_RANGE_SYMBOLS_ACTIVE) * 0.995
     est_order_usd = min(cap_target, max(0.0, cash_pre * 0.99))
     ref_usd = max(ALPACA_CRYPTO_MIN_ORDER_REF_USD, est_order_usd) if est_order_usd > 0 else cap_target
 
     symbols, levels = select_top_symbols(
-        data_client, trading_client, SYMBOL_POOL, SYMBOLS_ACTIVE, ref_usd
+        data_client, trading_client, SYMBOL_POOL, ALPACA_RANGE_SYMBOLS_ACTIVE, ref_usd
     )
 
     if not symbols:
