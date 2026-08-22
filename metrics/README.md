@@ -54,3 +54,20 @@ python -m metrics.export_all_trades
 ```
 
 Schrijft **`metrics/output/all_trades.json`** en **`all_trades.csv`** zonder filter.
+
+### Alpaca vs Kraken (USD range)
+
+```bash
+# Optioneel: pulls fills via sibling Kraken-bot .env → metrics/output/kraken_fills_api.jsonl
+python -m metrics.kraken_compare.pull_kraken --since 2026-05-01
+
+# Of gebruik de persistente log uit de Kraken-repo (na CI export):
+#   ../Kraken\ bot\ 500\ eu\ 15\ mei/data/kraken_trades.jsonl
+
+python -m metrics.kraken_compare \
+  --kraken "../Kraken bot 500 eu 15 mei/data/kraken_trades.jsonl" \
+  --start 2026-07-16 --end 2026-08-22 \
+  --alpaca-equity 1494.69 --kraken-equity 535.44
+```
+
+Zie `metrics/kraken_compare/` en `docs/superpowers/specs/2026-08-22-alpaca-kraken-compare-design.md`.
