@@ -62,6 +62,7 @@ from bot_live.alpaca_runtime import (
     get_open_orders,
     get_buying_power,
     get_portfolio_value,
+    get_position_market_value_usd,
     _find_position,
     _round_price,
     _sell_qty_decimal_from_position,
@@ -141,6 +142,25 @@ def _get_levels_and_scores(
     return build_levels_scored_from_symbol_rows(rows_map, symbols, min_spread_frac)
 
 
+def compute_capital_per_usd(
+    *,
+    portfolio_equity: float,
+    buying_power: float,
+    position_market_value: float,
+    buy_slots: int,
+    max_deployed_pct: float,
+) -> tuple[float, float, float]:
+    """
+    Bepaal koop-notional per vrij slot.
+
+    Returns ``(capital_per, deployed_positions_usd, deploy_room_usd)``.
+    """
+    deployed = max(0.0, position_market_value)
+    deploy_room = max(0.0, portfolio_equity * max_deployed_pct - deployed)
+    capital_per = min(buying_power, deploy_room) / max(1, buy_slots)
+    return capital_per, deployed, deploy_room
+
+
 def is_tradable_position(qty: float, ref_price: float) -> bool:
     """
     Telt deze positie mee als 'echte' positie?
@@ -153,6 +173,23 @@ def is_tradable_position(qty: float, ref_price: float) -> bool:
     if qty <= 0 or Decimal(str(qty)) < MIN_SELLABLE_CRYPTO_QTY:
         return False
     return qty * float(ref_price or 0) >= ALPACA_MIN_POSITION_NOTIONAL_USD
+
+
+def _cancel_orphan_buy_orders(trading_client, selected: set[str]) -> int:
+    """Annuleer open buys op symbolen die niet in de huidige selectie zitten."""
+    cancelled = 0
+    for sym in SYMBOL_POOL:
+        if sym in selected:
+            continue
+        for o in get_open_orders(trading_client, sym):
+            if o.side == OrderSide.BUY:
+                try:
+                    trading_client.cancel_order_by_id(o.id)
+                    log.info("  %s: Orphan buy order geannuleerd (niet geselecteerd)", sym)
+                    cancelled += 1
+                except Exception as e:
+                    log.warning("  %s: Orphan buy cancel mislukt: %s", sym, e)
+    return cancelled
 
 
 def select_top_symbols(
@@ -236,9 +273,15 @@ def run_once():
 
     new_trades = _check_and_notify_filled_orders(trading_client, SYMBOL_POOL)
 
+    orphans_cancelled = _cancel_orphan_buy_orders(trading_client, set(symbols))
+
     current_prices = get_current_prices(data_client, symbols)
     positions = get_positions(trading_client, symbols=symbols)
     buying_power = get_buying_power(trading_client)
+    position_market_usd = get_position_market_value_usd(trading_client, symbols=SYMBOL_POOL)
+    order_reserved_usd = max(
+        0.0, portfolio_pre - buying_power - position_market_usd
+    )
 
     # Alleen symbolen zonder lopende positie kunnen dit uur nog kopen; delen door
     # alle geselecteerde symbolen verschraalt elke order zodra er posities open staan.
@@ -247,11 +290,13 @@ def run_once():
         for sym in symbols
         if not is_tradable_position(*positions.get(sym, (0.0, 0.0)))
     )
-    deployed = max(0.0, portfolio_pre - buying_power)
-    deploy_room = max(
-        0.0, portfolio_pre * ALPACA_RANGE_MAX_DEPLOYED_PCT - deployed
+    capital_per, deployed, deploy_room = compute_capital_per_usd(
+        portfolio_equity=portfolio_pre,
+        buying_power=buying_power,
+        position_market_value=position_market_usd,
+        buy_slots=buy_slots,
+        max_deployed_pct=ALPACA_RANGE_MAX_DEPLOYED_PCT,
     )
-    capital_per = min(buying_power, deploy_room) / max(1, buy_slots)
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
 
@@ -263,16 +308,19 @@ def run_once():
         ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
     )
     log.info(
-        "Buying power: $%.2f | Ingezet: $%.2f (%.0f%%, max %.0f%%) | "
-        "Koopslots: %d van %d | Per asset: $%.2f",
+        "Buying power: $%.2f | Posities: $%.2f (%.0f%%, max %.0f%%) | "
+        "In orders: $%.2f | Koopslots: %d van %d | Per asset: $%.2f",
         buying_power,
         deployed,
         (deployed / portfolio_pre * 100) if portfolio_pre else 0.0,
         ALPACA_RANGE_MAX_DEPLOYED_PCT * 100,
+        order_reserved_usd,
         buy_slots,
         len(symbols),
         capital_per,
     )
+    if orphans_cancelled:
+        log.info("  Orphan buy orders geannuleerd: %d", orphans_cancelled)
     log.info("Levels: %s", levels)
     log.info("Current prices: %s", current_prices)
     log.info("Positions: %s", positions)
@@ -528,14 +576,7 @@ def run_once():
                 stats["skipped"] += 1
                 continue
             capital_for_symbol = safety.buy_cap(symbol, portfolio_pre, capital_per)
-            if capital_for_symbol < 10:
-                log.info(
-                    "  %s: Te weinig kapitaal ($%.2f, min $10), skip",
-                    symbol,
-                    capital_for_symbol,
-                )
-                stats["skipped"] += 1
-            elif buy_level < 0.0001:
+            if buy_level < 0.0001:
                 log.info(
                     "  %s: Prijs $%.8f te laag - Alpaca API accepteert dit niet",
                     symbol,
@@ -545,137 +586,158 @@ def run_once():
                     f"⚠️ {symbol}: Overgeslagen (prijs te laag voor Alpaca limit orders)"
                 )
                 stats["skipped"] += 1
-            else:
-                existing_buy = next(
-                    (o for o in open_orders if o.side == OrderSide.BUY), None
+                continue
+
+            existing_buy = next(
+                (o for o in open_orders if o.side == OrderSide.BUY), None
+            )
+            if existing_buy is None and capital_for_symbol < 10:
+                log.info(
+                    "  %s: Te weinig kapitaal ($%.2f, min $10), skip",
+                    symbol,
+                    capital_for_symbol,
                 )
-                needs_new_order = True
+                stats["skipped"] += 1
+                continue
 
-                if existing_buy:
-                    old_price = float(existing_buy.limit_price)
-                    age_hours = _order_age_hours(existing_buy)
-                    price_diff = abs(old_price - buy_level) / old_price
-                    current_price = current_prices.get(symbol)
+            # Verouderde orders worden ook zonder budget opgeruimd: anders blijft
+            # hun gereserveerde cash hangen en komt de bot nooit meer los.
+            needs_new_order = True
 
-                    if current_price and current_price > old_price * (
-                        1 + ORDER_STALE_PRICE_THRESHOLD
-                    ):
-                        try:
-                            trading_client.cancel_order_by_id(existing_buy.id)
-                            pct_above = (current_price - old_price) / old_price * 100
-                            log.info(
-                                "  %s: Buy order vervangen (prijs $%.2f is %.1f%% boven order)",
-                                symbol,
-                                current_price,
-                                pct_above,
-                            )
-                            send_telegram(
-                                f"🔄 {symbol}: Buy order vervangen, prijs {pct_above:.1f}% boven order, nieuwe @ ${buy_level:.4f}"
-                            )
-                            stats["updated"] += 1
-                        except Exception as e:
-                            log.warning(
-                                "  %s: Fout bij annuleren buy order: %s", symbol, e
-                            )
-                            needs_new_order = False
-                    elif age_hours >= ORDER_MAX_AGE_HOURS:
-                        try:
-                            trading_client.cancel_order_by_id(existing_buy.id)
-                            log.info(
-                                "  %s: Buy order vervangen na %.0fh (verse 24h window)",
-                                symbol,
-                                age_hours,
-                            )
-                            send_telegram(
-                                f"🔄 {symbol}: Buy order vervangen na {age_hours:.0f}h, nieuwe levels @ ${buy_level:.4f}"
-                            )
-                            stats["updated"] += 1
-                        except Exception as e:
-                            log.warning(
-                                "  %s: Fout bij annuleren buy order: %s", symbol, e
-                            )
-                            needs_new_order = False
-                    elif price_diff > ORDER_UPDATE_THRESHOLD:
-                        try:
-                            trading_client.cancel_order_by_id(existing_buy.id)
-                            log.info(
-                                "  %s: Buy order bijgewerkt (%.4f -> %.4f, %.1f%% verschil)",
-                                symbol,
-                                old_price,
-                                buy_level,
-                                price_diff * 100,
-                            )
-                            send_telegram(
-                                f"🔄 {symbol}: Buy order bijgewerkt @ ${buy_level:.4f} (was ${old_price:.4f})"
-                            )
-                            stats["updated"] += 1
-                        except Exception as e:
-                            log.warning(
-                                "  %s: Fout bij annuleren buy order: %s", symbol, e
-                            )
-                            needs_new_order = False
-                    else:
+            if existing_buy:
+                old_price = float(existing_buy.limit_price)
+                age_hours = _order_age_hours(existing_buy)
+                price_diff = abs(old_price - buy_level) / old_price
+                current_price = current_prices.get(symbol)
+
+                if current_price and current_price > old_price * (
+                    1 + ORDER_STALE_PRICE_THRESHOLD
+                ):
+                    try:
+                        trading_client.cancel_order_by_id(existing_buy.id)
+                        pct_above = (current_price - old_price) / old_price * 100
                         log.info(
-                            "  %s: Buy order ongewijzigd @ $%.4f (%.1f%% verschil, %.0fh oud)",
+                            "  %s: Buy order vervangen (prijs $%.2f is %.1f%% boven order)",
                             symbol,
-                            old_price,
-                            price_diff * 100,
+                            current_price,
+                            pct_above,
+                        )
+                        send_telegram(
+                            f"🔄 {symbol}: Buy order vervangen, prijs {pct_above:.1f}% boven order, nieuwe @ ${buy_level:.4f}"
+                        )
+                        stats["updated"] += 1
+                    except Exception as e:
+                        log.warning(
+                            "  %s: Fout bij annuleren buy order: %s", symbol, e
+                        )
+                        needs_new_order = False
+                elif age_hours >= ORDER_MAX_AGE_HOURS:
+                    try:
+                        trading_client.cancel_order_by_id(existing_buy.id)
+                        log.info(
+                            "  %s: Buy order vervangen na %.0fh (verse 24h window)",
+                            symbol,
                             age_hours,
                         )
-                        stats["unchanged"] += 1
-                        needs_new_order = False
-
-                if needs_new_order:
-                    if existing_buy and ORDER_REPLACE_DELAY_SEC > 0:
-                        time.sleep(ORDER_REPLACE_DELAY_SEC)
-                    spread_frac = (
-                        (sell_level - buy_level) / buy_level if buy_level > 0 else 0
-                    )
-                    gross_usd_est = capital_for_symbol * spread_frac
-                    fee_usd_est = (
-                        ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD
-                        + capital_for_symbol * ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT
-                    )
-                    if gross_usd_est < fee_usd_est:
-                        log.warning(
-                            "  %s: Buy overgeslagen: geschatte bruto $%.2f < fees $%.2f "
-                            "(levels vs order $%.2f)",
-                            symbol,
-                            gross_usd_est,
-                            fee_usd_est,
-                            capital_for_symbol,
+                        send_telegram(
+                            f"🔄 {symbol}: Buy order vervangen na {age_hours:.0f}h, nieuwe levels @ ${buy_level:.4f}"
                         )
-                        stats["skipped"] += 1
-                        continue
-                    qty = capital_for_symbol / buy_level
-                    limit_px = _round_price(buy_level)
-                    try:
-                        trading_client.submit_order(
-                            LimitOrderRequest(
-                                symbol=symbol,
-                                qty=round(qty, 6),
-                                side=OrderSide.BUY,
-                                type=OrderType.LIMIT,
-                                time_in_force=TimeInForce.GTC,
-                                limit_price=limit_px,
-                            )
-                        )
-                        price_str = (
-                            f"${buy_level:.8f}"
-                            if buy_level < 0.001
-                            else f"${buy_level:.4f}"
-                        )
-                        log.info(
-                            "  %s: Limit buy @ %s ($%.0f)", symbol, price_str, capital_for_symbol
-                        )
-                        if not existing_buy:
-                            send_telegram(
-                                f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_for_symbol:.0f}) geplaatst"
-                            )
-                            stats["placed"] += 1
+                        stats["updated"] += 1
                     except Exception as e:
-                        log.warning("  %s: Fout buy: %s", symbol, e)
-                        send_telegram(f"❌ {symbol}: Fout buy order: {e}")
+                        log.warning(
+                            "  %s: Fout bij annuleren buy order: %s", symbol, e
+                        )
+                        needs_new_order = False
+                elif price_diff > ORDER_UPDATE_THRESHOLD:
+                    try:
+                        trading_client.cancel_order_by_id(existing_buy.id)
+                        log.info(
+                            "  %s: Buy order bijgewerkt (%.4f -> %.4f, %.1f%% verschil)",
+                            symbol,
+                            old_price,
+                            buy_level,
+                            price_diff * 100,
+                        )
+                        send_telegram(
+                            f"🔄 {symbol}: Buy order bijgewerkt @ ${buy_level:.4f} (was ${old_price:.4f})"
+                        )
+                        stats["updated"] += 1
+                    except Exception as e:
+                        log.warning(
+                            "  %s: Fout bij annuleren buy order: %s", symbol, e
+                        )
+                        needs_new_order = False
+                else:
+                    log.info(
+                        "  %s: Buy order ongewijzigd @ $%.4f (%.1f%% verschil, %.0fh oud)",
+                        symbol,
+                        old_price,
+                        price_diff * 100,
+                        age_hours,
+                    )
+                    stats["unchanged"] += 1
+                    needs_new_order = False
+
+            if needs_new_order:
+                if capital_for_symbol < 10:
+                    log.info(
+                        "  %s: Order opgeruimd, geen nieuwe buy: te weinig "
+                        "kapitaal ($%.2f, min $10)",
+                        symbol,
+                        capital_for_symbol,
+                    )
+                    stats["skipped"] += 1
+                    continue
+                if existing_buy and ORDER_REPLACE_DELAY_SEC > 0:
+                    time.sleep(ORDER_REPLACE_DELAY_SEC)
+                spread_frac = (
+                    (sell_level - buy_level) / buy_level if buy_level > 0 else 0
+                )
+                gross_usd_est = capital_for_symbol * spread_frac
+                fee_usd_est = (
+                    ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD
+                    + capital_for_symbol * ALPACA_CRYPTO_ESTIMATED_MAKER_ROUND_TRIP_PCT
+                )
+                if gross_usd_est < fee_usd_est:
+                    log.warning(
+                        "  %s: Buy overgeslagen: geschatte bruto $%.2f < fees $%.2f "
+                        "(levels vs order $%.2f)",
+                        symbol,
+                        gross_usd_est,
+                        fee_usd_est,
+                        capital_for_symbol,
+                    )
+                    stats["skipped"] += 1
+                    continue
+                qty = capital_for_symbol / buy_level
+                limit_px = _round_price(buy_level)
+                try:
+                    trading_client.submit_order(
+                        LimitOrderRequest(
+                            symbol=symbol,
+                            qty=round(qty, 6),
+                            side=OrderSide.BUY,
+                            type=OrderType.LIMIT,
+                            time_in_force=TimeInForce.GTC,
+                            limit_price=limit_px,
+                        )
+                    )
+                    price_str = (
+                        f"${buy_level:.8f}"
+                        if buy_level < 0.001
+                        else f"${buy_level:.4f}"
+                    )
+                    log.info(
+                        "  %s: Limit buy @ %s ($%.0f)", symbol, price_str, capital_for_symbol
+                    )
+                    if not existing_buy:
+                        send_telegram(
+                            f"📊 {symbol}: Limit buy @ ${buy_level:.4f} (${capital_for_symbol:.0f}) geplaatst"
+                        )
+                        stats["placed"] += 1
+                except Exception as e:
+                    log.warning("  %s: Fout buy: %s", symbol, e)
+                    send_telegram(f"❌ {symbol}: Fout buy order: {e}")
 
     positions_journal = get_positions(trading_client, symbols=SYMBOL_POOL)
     entries = {
@@ -741,6 +803,10 @@ def run_once():
             "buy_slots": buy_slots,
             "deployed_usd": round(float(deployed), 2),
             "deployed_pct": round(deployed / portfolio_pre, 4) if portfolio_pre else 0.0,
+            "position_market_usd": round(float(position_market_usd), 2),
+            "order_reserved_usd": round(float(order_reserved_usd), 2),
+            "deploy_room_usd": round(float(deploy_room), 2),
+            "orphans_cancelled": orphans_cancelled,
             "portfolio_value_usd": round(portfolio_usd, 2),
             "summary_text": summary,
         },

@@ -15,7 +15,7 @@ from bot_live.config import (
     MIN_SPREAD_PCT,
     SAFETY_MAX_ALLOC_PCT,
 )
-from alpaca_bot.live_trader import is_tradable_position
+from alpaca_bot.live_trader import compute_capital_per_usd, is_tradable_position
 from alpaca_bot.strategy_core import select_top_symbols_from_scores
 
 
@@ -61,11 +61,29 @@ def test_restposities_bezetten_geen_slot():
     assert len(selected) == 5
 
 
-def _capital_per(equity: float, cash: float, buy_slots: int) -> float:
-    """Zelfde formule als run_once, los getest omdat run_once Alpaca-clients nodig heeft."""
-    deployed = max(0.0, equity - cash)
-    room = max(0.0, equity * ALPACA_RANGE_MAX_DEPLOYED_PCT - deployed)
-    return min(cash, room) / max(1, buy_slots)
+def _capital_per(
+    equity: float,
+    cash: float,
+    buy_slots: int,
+    *,
+    position_market: float = 0.0,
+) -> float:
+    per, _, _ = compute_capital_per_usd(
+        portfolio_equity=equity,
+        buying_power=cash,
+        position_market_value=position_market,
+        buy_slots=buy_slots,
+        max_deployed_pct=ALPACA_RANGE_MAX_DEPLOYED_PCT,
+    )
+    return per
+
+
+def test_open_buy_orders_tellen_niet_als_deployed():
+    """Deadlock aug 2026: equity−cash leek 79% ingezet, maar dat waren open buys."""
+    equity, cash = 1494.69, 308.80
+    per = _capital_per(equity, cash, buy_slots=5, position_market=0.0)
+    assert per > 10.0
+    assert per == min(cash, equity * ALPACA_RANGE_MAX_DEPLOYED_PCT) / 5
 
 
 def test_totale_inzet_blijft_onder_plafond():
@@ -80,29 +98,33 @@ def test_totale_inzet_blijft_onder_plafond():
 
 def test_geen_kapitaal_meer_boven_plafond():
     equity = 1000.0
-    cash = equity * (1 - ALPACA_RANGE_MAX_DEPLOYED_PCT) # precies op het plafond
-    assert _capital_per(equity, cash, buy_slots=3) == 0.0
+    position_mv = equity * ALPACA_RANGE_MAX_DEPLOYED_PCT
+    cash = equity - position_mv
+    assert _capital_per(equity, cash, buy_slots=3, position_market=position_mv) == 0.0
 
 
 def test_restjes_verschralen_de_ordergrootte_niet():
     """De bug: delen door alle geselecteerde symbolen i.p.v. de koopbare."""
     equity, cash = 1495.0, 1428.0
-    oud = _capital_per(equity, cash, buy_slots=10)  # 10 restjes = 10 delers
+    oud = _capital_per(equity, cash, buy_slots=10)
     nieuw = _capital_per(equity, cash, buy_slots=5)
     assert nieuw == oud * 2
 
 
 def test_inzet_groeit_naar_het_plafond():
-    """Het doel: van ~19% mediane inzet naar het ingestelde plafond."""
-    equity, cash = 1495.0, 1428.0
+    """Simuleer fills: position_market groeit tot deploy-cap."""
+    equity = 1495.0
+    cash = equity
+    position_mv = 0.0
     for _ in range(20):
-        per = _capital_per(equity, cash, buy_slots=ALPACA_RANGE_SYMBOLS_ACTIVE)
+        per = _capital_per(equity, cash, buy_slots=ALPACA_RANGE_SYMBOLS_ACTIVE, position_market=position_mv)
         if per <= 0:
             break
-        cash -= per * ALPACA_RANGE_SYMBOLS_ACTIVE  # alle slots vullen
-    deployed_pct = (equity - cash) / equity
-    assert deployed_pct == ALPACA_RANGE_MAX_DEPLOYED_PCT
-    assert deployed_pct > 0.19 * 2
+        add = per * ALPACA_RANGE_SYMBOLS_ACTIVE
+        position_mv += add
+        cash -= add
+    assert position_mv / equity <= ALPACA_RANGE_MAX_DEPLOYED_PCT + 1e-9
+    assert position_mv / equity > 0.19 * 2
 
 
 def test_echte_posities_blijven_altijd_actief():

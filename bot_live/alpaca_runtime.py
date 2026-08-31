@@ -181,6 +181,33 @@ def get_positions(trading_client, symbols: list[str] | None = None) -> dict[str,
     return out
 
 
+def get_position_market_value_usd(
+    trading_client, symbols: list[str] | None = None
+) -> float:
+    """
+    Marktwaarde van open crypto-posities (USD).
+
+    Gebruik dit voor deploy-cap sizing — niet ``equity - cash``: op Alpaca telt
+    gereserveerde cash in open buy-limits mee in equity−cash, terwijl er geen
+    positie is.
+    """
+    total = 0.0
+    for p in trading_client.get_all_positions():
+        sym = _norm_symbol(p.symbol)
+        if symbols is not None and sym not in symbols:
+            continue
+        mv = getattr(p, "market_value", None)
+        if mv is not None and mv != "":
+            total += abs(float(mv))
+            continue
+        qty = _position_qty_float(p)
+        if qty <= 0:
+            continue
+        px = float(getattr(p, "current_price", None) or p.avg_entry_price or 0)
+        total += qty * px
+    return total
+
+
 # Onder deze hoeveelheid crypto: geen sell (dust / afronding-ruis)
 MIN_SELLABLE_CRYPTO_QTY = Decimal("0.0001")
 
