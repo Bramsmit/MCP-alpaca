@@ -4,21 +4,23 @@ on:
     - cron: '0 9 * * *'   # 09:00 UTC = 11:00 Amsterdam
   workflow_dispatch:
 
+# De Bitvavo-heartbeat stond hier ook, maar postte naar
+# api.telegram.org/bot/sendMessage met een lege token: elke dag
+# {"ok":false,"error_code":404} terwijl de job groen bleef, want `curl -s`
+# geeft exitcode 0 op een HTTP-fout. Die bot staat zelf ook uit.
 jobs:
   heartbeat-alpaca:
     runs-on: ubuntu-latest
     steps:
+      # Een heartbeat die niet kan falen is geen heartbeat: controleer of
+      # Telegram het bericht echt heeft aangenomen.
       - name: Alpaca range-bot heartbeat
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          response=$(curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d "text=✅ Alpaca range-bot: actief."
-
-  heartbeat-bitvavo:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Bitvavo bot heartbeat
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BITVAVO_TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.BITVAVO_TELEGRAM_CHAT_ID }}" \
-            -d "text=✅ Bitvavo bot: actief."
+            -d "text=✅ Alpaca range-bot: actief.")
+          echo "$response" | grep -q '"ok":true' || {
+            echo "Telegram weigerde de heartbeat: $response"
+            exit 1
+          }
