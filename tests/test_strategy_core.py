@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from bot_live.config import LEVELS_LOOKBACK_DAYS
+from bot_live.config import (
+    BUY_ABOVE_LOW_PCT,
+    LEVELS_LOOKBACK_DAYS,
+    SELL_BELOW_HIGH_PCT,
+)
 from alpaca_bot.strategy_core import (
     build_levels_scored_from_symbol_rows,
     buy_level_distance_frac,
@@ -24,14 +28,14 @@ def test_levels_score_returns_none_when_insufficient_rows():
     assert levels_score_from_daily_rows(rows, min_spread_frac=0.0) is None
 
 
-def test_levels_score_flat_three_day_band():
+def test_levels_score_flat_band():
     """Constant low/high → bekende buy/sell uit BUY_ABOVE_LOW_PCT / SELL_BELOW_HIGH_PCT."""
     rows = _flat_daily(100.0, 110.0, LEVELS_LOOKBACK_DAYS)
     out = levels_score_from_daily_rows(rows, min_spread_frac=0.0)
     assert out is not None
     buy_level, sell_level, score = out
-    assert buy_level == pytest.approx(100.0 * 1.005)
-    assert sell_level == pytest.approx(110.0 * (1 - 0.02))
+    assert buy_level == pytest.approx(100.0 * (1 + BUY_ABOVE_LOW_PCT))
+    assert sell_level == pytest.approx(110.0 * (1 - SELL_BELOW_HIGH_PCT))
     assert score >= 0.0
 
 

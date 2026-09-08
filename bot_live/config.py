@@ -44,10 +44,14 @@ START_CAPITAL = 500
 CAPITAL_PER_ASSET = START_CAPITAL / SYMBOLS_ACTIVE
 
 # Range niveaus (rolling 24h met daily bars)
-# Gemiddelde laatste N dagen i.p.v. 1 dag — minder uitschieters
-LEVELS_LOOKBACK_DAYS = 3
+# Gemiddelde laatste N dagen i.p.v. 1 dag — minder uitschieters.
+# Waarden uit `python -m bot_range_1000.sweep_levels` (sep 2026): lookback 2 met
+# sell-marge 1% won over 3, 6 en 12 maanden; de oude 3/2% stond daar 5e, 5e en
+# 7e van 12. Deze constanten zijn gedeeld — Kraken, Bitvavo en hybrid erven ze
+# zodra die weer aangezet worden.
+LEVELS_LOOKBACK_DAYS = 2
 BUY_ABOVE_LOW_PCT = 0.005   # 0.5% boven de gem. low
-SELL_BELOW_HIGH_PCT = 0.02  # 2% onder de gem. high
+SELL_BELOW_HIGH_PCT = 0.01  # 1% onder de gem. high
 MIN_SPREAD_PCT = 0.02       # minimaal 2% spread tussen koop en verkoop
 
 # Bitvavo spot (EUR-markten), laagste tier tot ~€100k volume / 30 dagen:
