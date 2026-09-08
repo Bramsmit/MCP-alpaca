@@ -42,6 +42,7 @@ from bot_live.config import (
     ALPACA_RANGE_SYMBOLS_ACTIVE,
     LEVELS_LOOKBACK_DAYS,
     ALPACA_RANGE_MAX_DEPLOYED_PCT,
+    ALPACA_RANGE_MAX_BUY_DISTANCE_PCT,
     ALPACA_CRYPTO_MIN_ORDER_REF_USD,
     ALPACA_MIN_POSITION_NOTIONAL_USD,
     ALPACA_CRYPTO_ROUND_TRIP_FIXED_USD,
@@ -74,7 +75,14 @@ from bot_live.alpaca_runtime import (
 from bot_live.run_audit import ALPACA_RUNS_JSONL, log_run_audit
 from bot_live.safety import apply_safety_guardrails
 from alpaca_bot.strategy_core import (
+    BUY_ORDER_ABANDON,
+    BUY_ORDER_REPLACE_AGED,
+    BUY_ORDER_REPLACE_STALE_PRICE,
+    BUY_ORDER_UPDATE_LEVEL,
     build_levels_scored_from_symbol_rows,
+    buy_level_distance_frac,
+    decide_buy_order_action,
+    is_buy_level_reachable,
     levels_passing_spread,
     select_top_symbols_from_scores,
 )
@@ -192,6 +200,20 @@ def _cancel_orphan_buy_orders(trading_client, selected: set[str]) -> int:
     return cancelled
 
 
+def _cancel_buy_orders(trading_client, symbol: str, open_orders) -> int:
+    """Annuleer de open buy-orders van één symbool; retourneert het aantal."""
+    cancelled = 0
+    for o in open_orders:
+        if o.side != OrderSide.BUY:
+            continue
+        try:
+            trading_client.cancel_order_by_id(o.id)
+            cancelled += 1
+        except Exception as e:
+            log.warning("  %s: Buy cancel mislukt: %s", symbol, e)
+    return cancelled
+
+
 def select_top_symbols(
     data_client: CryptoHistoricalDataClient,
     trading_client,
@@ -212,9 +234,29 @@ def select_top_symbols(
         if is_tradable_position(qty, avg_entry)
     }
 
+    pool_prices = get_current_prices(data_client, pool)
     selected, levels = select_top_symbols_from_scores(
-        levels_scored, symbols_with_positions, n
+        levels_scored,
+        symbols_with_positions,
+        n,
+        current_prices=pool_prices,
+        max_buy_distance_frac=ALPACA_RANGE_MAX_BUY_DISTANCE_PCT,
     )
+
+    out_of_range = [
+        sym
+        for sym, (buy, _sell, _score) in levels_scored.items()
+        if sym not in selected
+        and not is_buy_level_reachable(
+            pool_prices.get(sym), buy, ALPACA_RANGE_MAX_BUY_DISTANCE_PCT
+        )
+    ]
+    if out_of_range:
+        log.info(
+            "Buiten bereik (>%.0f%% boven buy-level, geen slot): %s",
+            ALPACA_RANGE_MAX_BUY_DISTANCE_PCT * 100,
+            ", ".join(out_of_range),
+        )
 
     missing = [s for s in selected if s not in levels]
     if missing:
@@ -299,6 +341,7 @@ def run_once():
     )
 
     stats = {"placed": 0, "updated": 0, "unchanged": 0, "skipped": 0}
+    buy_levels_out_of_range = 0
 
     log.info("Geselecteerd: %s", ", ".join(symbols))
     log.info(
@@ -566,6 +609,37 @@ def run_once():
                         log.warning("  %s: Fout: %s", symbol, e)
                         send_telegram(f"❌ {symbol}: Fout orders: {e}")
         else:
+            current_price = current_prices.get(symbol)
+            existing_buy = next(
+                (o for o in open_orders if o.side == OrderSide.BUY), None
+            )
+            old_price = float(existing_buy.limit_price) if existing_buy else None
+            age_hours = _order_age_hours(existing_buy) if existing_buy else 0.0
+            action = decide_buy_order_action(
+                buy_level=buy_level,
+                current_price=current_price,
+                existing_order_price=old_price,
+                order_age_hours=age_hours,
+                max_buy_distance_frac=ALPACA_RANGE_MAX_BUY_DISTANCE_PCT,
+            )
+
+            if action == BUY_ORDER_ABANDON:
+                distance = buy_level_distance_frac(current_price, buy_level) or 0.0
+                cancelled = _cancel_buy_orders(trading_client, symbol, open_orders)
+                log.info(
+                    "  %s: Buy overgeslagen: prijs $%.4f staat %.1f%% boven buy-level "
+                    "$%.4f (max %.0f%%)%s",
+                    symbol,
+                    float(current_price or 0.0),
+                    distance * 100,
+                    buy_level,
+                    ALPACA_RANGE_MAX_BUY_DISTANCE_PCT * 100,
+                    "; order geannuleerd, kapitaal vrij" if cancelled else "",
+                )
+                buy_levels_out_of_range += 1
+                stats["skipped"] += 1
+                continue
+
             if not safety.allow_buy(symbol):
                 reason = (
                     "portfolio risk-off"
@@ -588,9 +662,6 @@ def run_once():
                 stats["skipped"] += 1
                 continue
 
-            existing_buy = next(
-                (o for o in open_orders if o.side == OrderSide.BUY), None
-            )
             if existing_buy is None and capital_for_symbol < 10:
                 log.info(
                     "  %s: Te weinig kapitaal ($%.2f, min $10), skip",
@@ -605,14 +676,9 @@ def run_once():
             needs_new_order = True
 
             if existing_buy:
-                old_price = float(existing_buy.limit_price)
-                age_hours = _order_age_hours(existing_buy)
                 price_diff = abs(old_price - buy_level) / old_price
-                current_price = current_prices.get(symbol)
 
-                if current_price and current_price > old_price * (
-                    1 + ORDER_STALE_PRICE_THRESHOLD
-                ):
+                if action == BUY_ORDER_REPLACE_STALE_PRICE:
                     try:
                         trading_client.cancel_order_by_id(existing_buy.id)
                         pct_above = (current_price - old_price) / old_price * 100
@@ -631,7 +697,7 @@ def run_once():
                             "  %s: Fout bij annuleren buy order: %s", symbol, e
                         )
                         needs_new_order = False
-                elif age_hours >= ORDER_MAX_AGE_HOURS:
+                elif action == BUY_ORDER_REPLACE_AGED:
                     try:
                         trading_client.cancel_order_by_id(existing_buy.id)
                         log.info(
@@ -648,7 +714,7 @@ def run_once():
                             "  %s: Fout bij annuleren buy order: %s", symbol, e
                         )
                         needs_new_order = False
-                elif price_diff > ORDER_UPDATE_THRESHOLD:
+                elif action == BUY_ORDER_UPDATE_LEVEL:
                     try:
                         trading_client.cancel_order_by_id(existing_buy.id)
                         log.info(
@@ -807,6 +873,8 @@ def run_once():
             "order_reserved_usd": round(float(order_reserved_usd), 2),
             "deploy_room_usd": round(float(deploy_room), 2),
             "orphans_cancelled": orphans_cancelled,
+            "buy_levels_out_of_range": buy_levels_out_of_range,
+            "max_buy_distance_pct": ALPACA_RANGE_MAX_BUY_DISTANCE_PCT,
             "portfolio_value_usd": round(portfolio_usd, 2),
             "summary_text": summary,
         },

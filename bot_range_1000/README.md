@@ -8,6 +8,23 @@ Code staat onder `bot_range_1000/`. Gedeelde config, Telegram en journal: `bot_l
 python -m bot_range_1000.backtest
 ```
 
+### Parametersweep op de levels
+
+Rekent lookback-dagen x sell-marge door en toont naast het rendement ook het
+aantal fills — een instelling die niets verdient omdat ze nooit vult is een
+ander probleem dan een instelling die verliest. `MIN_SPREAD_PCT` blijft vast:
+dat is de fee-bodem, geen vrije parameter.
+
+```bash
+python -m bot_range_1000.sweep_levels                      # 6 mnd, hele pool
+python -m bot_range_1000.sweep_levels --months 12 --top 6
+python -m bot_range_1000.sweep_levels --lookbacks 2 3 --sell-margins 0.01
+```
+
+Volledige uitkomst gaat naar `metrics/output/sweep_levels.json`. Let op: elk
+symbool wordt los doorgerekend zonder slot-competitie, dus de sweep vergelijkt
+parameters onderling en voorspelt geen live equity.
+
 ## Context voor v2 / Cursor (architectuur + trade-handoff)
 
 - Overzicht: [docs/CODEBASE_CONTEXT_FOR_V2.md](../docs/CODEBASE_CONTEXT_FOR_V2.md)

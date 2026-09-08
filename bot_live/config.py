@@ -28,6 +28,13 @@ ALPACA_RANGE_MAX_DEPLOYED_PCT = float(
     _os_range.environ.get("ALPACA_RANGE_MAX_DEPLOYED_PCT", "0.60")
 )
 
+# Ligt het buy-level verder dan dit onder de markt, dan is de range omhoog
+# gebroken: zo'n limietorder vult praktisch nooit, maar reserveert wel cash en
+# een koopslot. Het slot gaat dan naar een symbool dat nog in zijn range zit.
+ALPACA_RANGE_MAX_BUY_DISTANCE_PCT = float(
+    _os_range.environ.get("ALPACA_RANGE_MAX_BUY_DISTANCE_PCT", "0.10")
+)
+
 # Voor backtest: eerste N uit pool (zelfde subset als live)
 SYMBOLS = SYMBOL_POOL[:SYMBOLS_ACTIVE]
 

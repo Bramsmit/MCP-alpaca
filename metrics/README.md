@@ -47,6 +47,22 @@ Eigen journal-bestand:
 python -m metrics.export_bitvavo_trades --trades /pad/naar/bitvavo_trades.jsonl
 ```
 
+### Echte per-trade PnL (FIFO) — Alpaca
+
+De bot vult `profit_usd` alleen als de entry nog in zijn state stond; na een
+herstart blijft dat veld leeg, en in aug 2026 bleef er een verouderde
+entry-prijs hangen (UNI op $2,5014 terwijl er op $3,20+ werd gekocht). Reken
+daarom niet met de PnL-velden uit het journal, maar koppel de fills FIFO:
+
+```bash
+python -m metrics.fifo_pnl
+python -m metrics.fifo_pnl --start 2026-07-01 --symbol UNI/USD
+```
+
+Uitvoer: samenvatting op stdout (win-rate, netto na fees, per symbool) plus
+`metrics/output/fifo_pnl.json` en `.csv` met elke round-trip. Sells zonder
+bijbehorende buy (positie ouder dan het journal) worden apart gemeld.
+
 ### Alle trades (Alpaca + Bitvavo gemengd)
 
 ```bash

@@ -82,10 +82,17 @@ def run_backtest(
     symbol: str,
     capital: float,
     stop_loss_per_unit: float,
+    *,
+    lookback_days: int = LEVELS_LOOKBACK_DAYS,
+    buy_above_low_pct: float = BUY_ABOVE_LOW_PCT,
+    sell_below_high_pct: float = SELL_BELOW_HIGH_PCT,
 ) -> dict:
     """
     Run backtest voor één asset.
     Gebruikt VORIGE dag high/low voor niveaus (geen look-ahead bias).
+
+    De level-parameters komen standaard uit `bot_live.config`; ze zijn
+    overschrijfbaar zodat `sweep_levels` een grid kan doorrekenen.
     """
     cash = capital
     position = 0.0
@@ -98,7 +105,7 @@ def run_backtest(
         high, low, close = row["high"], row["low"], row["close"]
 
         # Gebruik gem. van laatste N dagen voor niveaus (geen look-ahead, minder uitschieters)
-        start_idx = max(0, i - LEVELS_LOOKBACK_DAYS)
+        start_idx = max(0, i - lookback_days)
         window = df.iloc[start_idx:i]
         if len(window) == 0:
             prev_high, prev_low = high, low
@@ -106,8 +113,8 @@ def run_backtest(
             prev_high = window["high"].mean()
             prev_low = window["low"].mean()
 
-        buy_level = prev_low * (1 + BUY_ABOVE_LOW_PCT)
-        sell_level = prev_high * (1 - SELL_BELOW_HIGH_PCT)
+        buy_level = prev_low * (1 + buy_above_low_pct)
+        sell_level = prev_high * (1 - sell_below_high_pct)
 
         if sell_level < buy_level * (1 + MIN_SPREAD_PCT):
             equity_curve.append({"date": ts, "cash": cash, "position": position, "value": cash + position * close})
