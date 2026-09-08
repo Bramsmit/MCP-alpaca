@@ -4,8 +4,7 @@ Regressietests voor de levenscyclus van buy-orders.
 De bug van september 2026: DOT handelde 26% boven zijn buy-level. De runner zag
 alleen "prijs is weggelopen van de order", cancelde en plaatste dezelfde
 onbereikbare order terug. Elke run opnieuw, terwijl die order ~$156 cash en een
-van de vijf koopslots bezet hield. Resultaat: 17 dagen zonder fills bij 31%
-ingezet kapitaal.
+van de vijf koopslots bezet hield zonder realistische kans op een fill.
 """
 
 from __future__ import annotations

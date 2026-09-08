@@ -2,10 +2,9 @@
 """
 Parametersweep voor de range-levels: lookback-dagen x sell-marge.
 
-De live bot stond 17 dagen zonder fills terwijl maar ~31% van het kapitaal in
-de markt zat. Deze sweep meet per combinatie niet alleen het rendement maar
-ook het aantal fills: een instelling die niets verdient omdat ze nooit vult is
-een ander probleem dan een instelling die verliest.
+Deze sweep meet per combinatie niet alleen het rendement maar ook het aantal
+fills: een instelling die niets verdient omdat ze nooit vult is een ander
+probleem dan een instelling die verliest.
 
 MIN_SPREAD_PCT blijft vast: dat is de fee-bodem, geen vrije parameter. Bij een
 smalle sell-marge kan de spread-gate dus trades blokkeren — dat is precies het
