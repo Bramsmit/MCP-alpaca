@@ -660,3 +660,5 @@ timestamp,order_id,symbol,side,qty,price,entry_price,notional_usd,profit_usd,pro
 2026-09-14T05:50:09.465653+00:00,c2a23ba8-496d-48cb-856a-0394d12288d6,AAVE/USD,buy,1.266323,124.3956,,157.525,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-09-14T05:50:09.465873+00:00,2242cb5a-1950-4912-bdbc-0210bb094472,UNI/USD,sell,25.259288149,6.2688,2.5014,158.3454,94.3295,148.48,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-09-14T05:50:10.035423+00:00,98dab4de-92e2-4e05-b7bb-18a0e925919a,LINK/USD,sell,13.797899797,11.308,,156.0267,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-09-14T11:55:54.663048+00:00,f46fc992-bc5e-4270-af6e-d0c6ffa29716,AAVE/USD,sell,1.264423515,126.1357,,159.4889,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-09-14T11:55:54.663472+00:00,2cec6d3a-593e-4dfd-87b4-e28291fb5fbe,AVAX/USD,buy,21.640546,7.3027,,158.0344,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
