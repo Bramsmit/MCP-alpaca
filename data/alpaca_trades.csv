@@ -742,3 +742,8 @@ timestamp,order_id,symbol,side,qty,price,entry_price,notional_usd,profit_usd,pro
 2026-10-01T06:52:57.854437+00:00,63fb0c0b-4546-42bf-9994-f023f31d8030,LINK/USD,buy,11.796682,14.2491,,168.0921,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-10-01T06:52:57.854879+00:00,1ef7fca0-9b22-4dae-9625-f6998d233965,AVAX/USD,sell,15.355021866,11.0991,,170.4269,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-10-01T06:52:57.855229+00:00,234f5533-9457-45dc-9539-34030091ef5e,UNI/USD,buy,19.079523,8.8101,,168.0925,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-10-01T14:13:38.356012+00:00,164b6c20-3a91-444c-b3fd-89690e272234,AAVE/USD,sell,1.05731764,167.302,,176.8914,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-10-01T14:13:38.356447+00:00,201ec2a6-bbe2-4803-b2f7-ae6f5518ffb5,UNI/USD,sell,19.050903715,9.006,2.5014,171.5724,123.0897,256.57,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-10-01T14:13:38.976176+00:00,2a5322fe-8c5a-4a9a-bfd7-feb7051dd67a,CRV/USD,buy,545.159024,0.385472,,210.1435,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-10-01T14:13:38.976630+00:00,3e3396cb-88f0-4f29-9d54-ff6dc496a27e,ADA/USD,buy,1021.851852,0.244489,,249.8315,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-10-01T14:13:38.976988+00:00,282a1f3c-3d52-4961-b945-b500a937b901,LINK/USD,sell,11.778986977,14.5279,,171.1239,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
