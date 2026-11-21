@@ -1125,3 +1125,4 @@ timestamp,order_id,symbol,side,qty,price,entry_price,notional_usd,profit_usd,pro
 2026-11-20T14:57:15.127609+00:00,690d702a-81cc-434f-afb2-94564da12b35,CRV/USD,sell,1560.52372497,0.194982,,304.274,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-11-20T22:09:54.990612+00:00,b15968f1-b02a-4bc0-a054-1a5db2a24ac1,CRV/USD,buy,1657.575794,0.1867,,309.4694,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
 2026-11-20T22:09:54.990928+00:00,7dc0f41d-4f9b-47c6-b512-4e43d5a56e2a,UNI/USD,sell,37.611801832,4.43944,2.5014,166.9753,72.0016,76.21,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
+2026-11-21T03:45:59.987254+00:00,8216787f-8a79-4890-a704-2c7e376ffca4,AAVE/USD,sell,1.778992372,92.6371,,164.8007,,,,maker 0.15% + $0.25 vast per zijde (fictief Bitvavo-model)
